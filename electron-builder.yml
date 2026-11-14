@@ -1,0 +1,36 @@
+appId: io.github.iontail.paperglim
+productName: PaperGlim
+directories:
+  output: release
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+mac:
+  icon: resources/icon.icns
+  category: public.app-category.education
+  minimumSystemVersion: '13.0'
+  identity: '-'
+  notarize: false
+  target:
+    - dmg
+    - zip
+  artifactName: PaperGlim-${version}-mac-${arch}.${ext}
+fileAssociations:
+  - ext: pdf
+    name: PDF document
+    mimeType: application/pdf
+    role: Viewer
+dmg:
+  title: PaperGlim
+  contents:
+    - x: 145
+      y: 180
+    - x: 415
+      y: 180
+      type: link
+      path: /Applications
+publish:
+  provider: github
+  owner: iontail
+  repo: PaperGlim
