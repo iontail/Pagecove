@@ -43,6 +43,8 @@ npx electron-builder --mac --x64 --publish never
 
 아이콘 원본은 `resources/icon.svg`와 `src/renderer/src/assets/paperglim.svg`야. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS를 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
 
+`node scripts/check-package.mjs`는 실제 Apple Silicon 배포 앱의 실행·번들 PDF·아이콘·모델 메뉴를 검사해. `node scripts/check-site.mjs`는 Google Chrome으로 1440·820·390·320px 화면, 이미지·섹션 링크·키보드 FAQ·동작 줄이기를 확인하고 `artifacts/site-*.png`에 화면을 저장해.
+
 여러 페이지가 있는 PDF로 실제 Electron 화면을 검증하려면 `node scripts/check-ui.mjs /path/to/paper.pdf`를 실행해. 별도 테스트 프로필을 사용하며 결과와 스크린샷은 `artifacts/`에 저장돼.
 
 ## 현재 동작
