@@ -2,7 +2,7 @@
 
 ## Platform and stack
 
-macOS desktop app using Electron, React, TypeScript and react-pdf.
+Apple Silicon macOS desktop app using Electron, React, TypeScript and react-pdf. Ship arm64 builds only; Intel Mac is not supported.
 
 ## Purpose
 

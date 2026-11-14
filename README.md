@@ -2,9 +2,9 @@
 
 macOS에서 논문 PDF와 AI를 나란히 두고 읽는 개인용 앱.
 
-[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.0)
+[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.1)
 
-macOS 13 이상. Apple Silicon과 Intel용 DMG·ZIP을 제공해. 현재 베타는 Apple 개발자 인증서 서명·공증을 받지 않았어. 처음 실행할 때 차단되면 파일 출처를 확인한 뒤 시스템 설정의 개인정보 보호 및 보안에서 **그래도 열기**를 사용할 수 있어. [Apple 안내](https://support.apple.com/ko-kr/102445)
+macOS 13 이상의 Apple Silicon Mac 전용이야. DMG·ZIP을 제공하며 Intel Mac은 지원하지 않아. 현재 베타는 Apple 개발자 인증서 서명·공증을 받지 않았어. 처음 실행할 때 차단되면 파일 출처를 확인한 뒤 시스템 설정의 개인정보 보호 및 보안에서 **그래도 열기**를 사용할 수 있어. [Apple 안내](https://support.apple.com/ko-kr/102445)
 
 ## 개발 화면 확인
 
@@ -30,18 +30,17 @@ npm start
 
 ```bash
 npm run dist:mac
-# 또는 빌드 후 아키텍처별 패키징
+# 또는 빌드 후 Apple Silicon 패키징
 npx electron-builder --mac --arm64 --publish never
-npx electron-builder --mac --x64 --publish never
 ```
 
 결과는 `release/`에 생성돼. `electron-builder.yml`에 아이콘, PDF 파일 연결, 최소 macOS 버전과 배포 대상을 정의했어. 현재 서명은 로컬 무결성 검사용 ad-hoc 방식이며, Apple Developer ID 서명이나 공증은 아니야.
 
-`v*` 태그를 push하면 GitHub Actions가 Apple Silicon과 Intel Mac에서 테스트·빌드한 후 두 아키텍처의 파일을 하나의 프리릴리스에 올려. `workflow_dispatch`로 실행하면 파일을 Actions artifact로만 보관해. 자동 업데이트는 아직 없어.
+`v*` 태그를 push하면 GitHub Actions가 Apple Silicon Mac에서 테스트·빌드한 후 arm64 설치 파일과 체크섬을 프리릴리스에 올려. `workflow_dispatch`로 실행하면 파일을 Actions artifact로만 보관해. 자동 업데이트는 아직 없어.
 
 `website/`는 빌드 과정이 필요 없는 다운로드 사이트 원본이야. `iontail.github.io` 저장소의 `paperglim/`에 HTML·CSS·assets를 복사해서 배포해. 버전을 올릴 때 `website/index.html`의 버전과 다운로드 링크를 실제 릴리스에 맞춰 갱신해야 해. 기존 개인 사이트의 Jekyll 설정이나 루트 홈페이지는 바꾸지 않아.
 
-아이콘 원본은 `resources/icon.svg`와 `src/renderer/src/assets/paperglim.svg`야. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS를 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
+아이콘 원본은 `resources/icon.svg`야. 펼친 학술 서적과 세리프 P, 와인색 책갈피로 읽기 앱의 정체성을 표현해. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 책 마크를 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
 
 `node scripts/check-package.mjs`는 실제 Apple Silicon 배포 앱의 실행·번들 PDF·아이콘·모델 메뉴를 검사해. `node scripts/check-site.mjs`는 Google Chrome으로 1440·820·390·320px 화면, 이미지·섹션 링크·키보드 FAQ·동작 줄이기를 확인하고 `artifacts/site-*.png`에 화면을 저장해.
 

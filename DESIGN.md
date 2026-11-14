@@ -8,6 +8,8 @@ A black desktop workspace with neutral controls. Only the translation uses pale 
 
 ## Foundations
 
+The app identity is an open scholarly volume on an ink-colored tile, with ivory pages, a drawn serif P and an oxblood ribbon. Use quiet binding detail and controlled page shading, with no sparkles, folded-file symbol or AI badge. The header mark crops the same book artwork without the tile or shadow. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 32–128px rather than adding fine decorative detail.
+
 - Shell `#141415`, sidebar `#111112`, reading ground `#181819`.
 - Main text `#e8e8eb`, secondary text `#a0a0a5`, separators `#2e2e32`.
 - Neutral actions `#e7e7e7` with dark text `#181818`. Reserve maple for translation controls.
