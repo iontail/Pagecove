@@ -3,6 +3,27 @@ import assert from 'node:assert/strict'
 import { answerMarkdown } from '../src/shared/answer-format.ts'
 import { paperPrompt, readingQuestions, summaryPrompt } from '../src/shared/paper-harness.ts'
 import { selectionPopup } from '../src/shared/selection-layout.ts'
+import pageCitations from '../src/shared/page-citations.ts'
+
+test('paragraph citations merge without losing distinct pages or rewriting math and code', () => {
+  const math = { type: 'inlineMath', value: 'x_{[p. 8]}' }
+  const code = { type: 'inlineCode', value: '[p. 9]' }
+  const link = { type: 'link', url: 'https://example.com', children: [{ type: 'text', value: '[p. 10]' }] }
+  const paragraph = { type: 'paragraph', children: [{ type: 'text', value: '첫 설명. [p. 3] ' }, math, { type: 'text', value: '다음 설명. [p. 3] [p. 4–5] [p. 7] ' }, code, link] }
+  const other = { type: 'paragraph', children: [{ type: 'text', value: '다른 주장. [p. 3]' }] }
+  pageCitations()({ type: 'root', children: [paragraph, other] })
+  const note = paragraph.children.at(-1)
+  assert.equal(note.data.hName, 'span')
+  assert.deepEqual(note.data.hProperties.className, ['answer-citation'])
+  assert.equal(note.children[0].value, 'p. 3–5, 7')
+  assert.equal(other.children.at(-1).children[0].value, 'p. 3')
+  assert.equal(paragraph.children[1], math)
+  assert.ok(paragraph.children.includes(code) && paragraph.children.includes(link))
+  assert.ok(!paragraph.children.filter((child) => child.type === 'text').some((child) => child.value.includes('[p.')))
+  const invalid = { type: 'paragraph', children: [{ type: 'text', value: '원문 표기 [p. 5–2]' }] }
+  pageCitations()({ type: 'root', children: [invalid] })
+  assert.equal(invalid.children[0].value, '원문 표기 [p. 5–2]')
+})
 
 test('reading presets route distinct tasks while retaining source and citation safeguards', () => {
   const source = '[p. 1]\nSource text.\n[p. 3]\nMore source.'

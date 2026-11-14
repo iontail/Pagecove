@@ -28,6 +28,8 @@ PDF text stays transparent during native selection, preserving the single canvas
 
 Chat suggestions send immediately. Show the current question and the beginning of its answer when a response arrives. Markdown uses short headings, clear paragraph spacing and shallow lists. Local KaTeX handles inline and display math; long expressions and tables scroll within their own bounds. Keep equations distinct without colored cards or decorative separators.
 
+Group source pages once at the end of each answer paragraph. Deduplicate page references and compact consecutive ranges without dropping cited pages. Use secondary text at 85% of the body size, with no badge background, superscript, or link affordance. Keep user-authored messages, code and equations unchanged.
+
 ## Reading assistance
 
 Keep translation controls attached to the source column; opening translation on one page never moves another page's controls into empty side space. The first page also offers translate-all progress and stop.

@@ -25,7 +25,7 @@ try {
       if (prompt.includes('BAD_MATH')) return String.raw`수식 원문을 유지해: $\frac{1}{}{}{$. <script>window.untrustedScript=true</script>`
       if (prompt.includes('LONG_MATH')) return `문장 속 긴 식 $${Array.from({ length: 40 }, (_, index) => `x_{${index + 1}}`).join('+')}$도 확인해. [p. 3]`
       return String.raw`### 핵심
-**Residual learning(잔차 학습)**은 목표 함수를 직접 학습하는 대신 차이를 학습해. 문장 안에서 $y=F(x)+x$로 쓸 수 있어. [p. 3]
+**Residual learning(잔차 학습)**은 목표 함수를 직접 학습하는 대신 차이를 학습해. [p. 3] 문장 안에서 $y=F(x)+x$로 쓸 수 있어. [p. 3] [p. 4]
 
 ### 식의 의미
 $$
@@ -82,6 +82,8 @@ $$
     assert.ok(calls.at(-1).includes('[p. 12]'))
     assert.equal(await page.locator('.chat-message.user .answer-text').innerText(), label)
     assert.equal(await page.locator('.chat-message.assistant .answer-text strong').first().innerText(), 'Residual learning(잔차 학습)')
+    assert.equal(await page.locator('.chat-message.assistant .answer-citation').first().innerText(), 'p. 3–4')
+    assert.equal(await page.locator('.chat-message.user .answer-citation').count(), 0)
     assert.equal(await page.locator('.katex-display').count(), 1)
     assert.ok(await page.locator('.katex').count() >= 4)
     assert.equal(await page.locator('.katex-error').count(), 0)
