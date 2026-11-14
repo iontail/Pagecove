@@ -80,6 +80,7 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
     if (!source.current) return
     const anchor = selectedAnchor(source.current, page)
     if (anchor) { hold(); onAnchor(anchor, true); onSelect({ text: anchor.text, page }) }
+    else if (selection) closeSelection()
   }
   function hover(event: React.MouseEvent<HTMLDivElement>) {
     if (selectionPinned || event.buttons || !source.current) return

@@ -15,6 +15,7 @@ Read academic PDFs with page-local Korean translation and optional AI questions 
 - Provide a first-page translate-all action and sentence-level recovery instead of hiding an entire page on one validation failure.
 - Offer composer-level model selection and optional Codex Fast for chat, summary and selection explanation; preserve current conversation when changing models. Keep translation at Standard speed. Disable Claude Fast because it requires credits outside subscription limits.
 - Offer whole-paper chat and structured three-sentence / overview summaries.
+- Make the three reading suggestions execute immediately with distinct internal tasks. Ground normal chat and inline explanations in the same paper context, define relevant concepts and keep answers concise. Render Markdown and local KaTeX inline/display math, retaining malformed math as visible source.
 - Preserve important English terminology. Exclude chart interiors from translation where the heuristic can identify them.
 - Each CLI invocation is ephemeral. Include only the current thread history, never other threads. Keep sidebar chat and drafts temporary; persist requested selection explanations locally for later hover recall. Share the full-paper extraction and long-paper evidence context across questions, summaries and explanations.
 - Keep original PDFs unchanged. Retain the library and reading position when returning to the start screen.

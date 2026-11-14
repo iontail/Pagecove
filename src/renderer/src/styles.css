@@ -111,7 +111,7 @@ svg { stroke-width: 1.5; }
 .pdf-render { transform-origin: top left; }
 .react-pdf__Page { box-shadow: none; }
 .react-pdf__Page__textContent { user-select: text; }
-.react-pdf__Page__textContent ::selection { background: #e9ba4c66; }
+.react-pdf__Page__textContent ::selection { color: transparent; background: #e9ba4c66; }
 .page-placeholder { width: 100%; height: 100%; display: grid; place-items: center; background: #fff; color: #696969; font-size: 12px; }
 .page-placeholder svg { width: 18px; }
 .reading-welcome { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
@@ -286,10 +286,10 @@ input::placeholder, textarea::placeholder { color: var(--muted-foreground); opac
 .annotation-mark { position: absolute; background: #79a9ce30; border-bottom: 1px dotted #5484a9; border-radius: 2px; }
 .selection-popover { position: fixed; z-index: 40; display: flex; align-items: center; gap: 6px; padding: 6px; color: #ededed; background: #1d1d1d; border: 1px solid #494949; border-radius: 8px; box-shadow: 0 8px 28px #0005; font-size: 13px; }
 .selection-expanded { display: flex; align-items: stretch; flex-direction: column; padding: 0; max-height: min(560px, calc(100dvh - 24px)); gap: 0; }
-.selection-expanded > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #353535; }
+.selection-expanded > header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #353535; }
 .selection-expanded > header strong { font-size: 12px; font-weight: 500; color: #c6c6c6; }
 .selection-expanded > header > div { display: flex; gap: 4px; }
-.selection-popover blockquote { color: #bdbdbd; margin: 12px 14px 0; padding-left: 10px; border-left: 1px solid #686868; font-size: 12px; line-height: 1.7; max-height: 68px; overflow: auto; }
+.selection-popover blockquote { color: #bdbdbd; margin: 12px 14px 0; padding-left: 10px; border-left: 1px solid #686868; font-size: 12px; line-height: 1.7; max-height: 68px; flex-shrink: 0; overflow: auto; }
 .selection-messages { overflow: auto; min-height: 0; max-height: 320px; padding: 14px; overscroll-behavior: contain; }
 .selection-message + .selection-message { margin-top: 18px; }
 .selection-message strong { display: block; font-size: 11px; font-weight: 500; color: #b7b7b7; margin-bottom: 5px; }
@@ -303,7 +303,32 @@ input::placeholder, textarea::placeholder { color: var(--muted-foreground); opac
 .selection-expanded .selection-composer input { font-size: 13px; }
 .selection-error { font-size: 12px; color: #e2aba4; margin: 10px 14px; }
 
-.answer-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; }
+.answer-text { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.85; }
+.answer-text > :first-child { margin-top: 0; }
+.answer-text > :last-child { margin-bottom: 0; }
+.answer-text p, .selection-message .answer-text p, .paper-summary .answer-text p { margin: 0 0 12px; white-space: normal; }
+.answer-text h1, .answer-text h2, .answer-text h3, .answer-text h4 { margin: 20px 0 8px; font-size: 14px; line-height: 1.5; font-weight: 600; color: #f1f1f3; }
+.answer-text ul, .answer-text ol { margin: 10px 0 14px; padding-left: 20px; }
+.answer-text ul { list-style: disc; }
+.answer-text ol { list-style: decimal; }
+.answer-text li { margin: 6px 0; padding-left: 2px; }
+.answer-text li > p { margin-bottom: 6px; }
+.answer-text blockquote { margin: 12px 0; padding: 0 12px; color: #b7b7bd; border-left: 1px solid #66666b; }
+.answer-text pre { max-width: 100%; overflow: auto; padding: 12px; margin: 12px 0; border-radius: 6px; background: #ffffff08; }
+.answer-text pre code { padding: 0; background: transparent; white-space: pre; overflow-wrap: normal; }
+.answer-text a { text-decoration: underline; text-underline-offset: 3px; }
+.answer-table { max-width: 100%; overflow: auto; margin: 12px 0; }
+.answer-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.answer-table th, .answer-table td { min-width: 90px; text-align: left; border-bottom: 1px solid #414146; padding: 8px; }
+.answer-table th { font-weight: 600; }
+.answer-text .katex { font-size: 1.08em; overflow-wrap: normal; }
+.answer-text .katex:not(.katex-display .katex) { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; vertical-align: baseline; padding: .12em 0; }
+.answer-text .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 5px 0; margin: 14px 0; }
+.answer-text .katex-error { color: #d9b886 !important; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; }
+.answer-text .katex-error::before { content: '수식 원문 · '; font-family: inherit; }
+.answer-copy { float: right; color: #a0a0a8; padding: 3px; border-radius: 3px; }
+.answer-copy:hover { color: #ededed; background: #ffffff0a; }
+.question-suggestions button:disabled { opacity: .45; cursor: default; }
 .answer-text strong { display: inline; font: inherit; font-weight: 600; color: inherit; margin: 0; }
 .answer-text code { color: inherit; font-size: .95em; padding: 1px 3px; background: #ffffff0b; border-radius: 3px; overflow-wrap: anywhere; }
 .selection-message.user .answer-text { color: #bcbcbc; }

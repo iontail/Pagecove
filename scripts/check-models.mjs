@@ -10,7 +10,9 @@ delete env.ELECTRON_RUN_AS_NODE
 delete env.ELECTRON_RENDERER_URL
 const app = await _electron.launch({ args: [resolve('.')], env })
 const errors = []
+let window
 try {
+  window = await app.firstWindow()
   await app.evaluate(({ ipcMain }) => {
     ipcMain.removeHandler('providers:list')
     ipcMain.handle('providers:list', () => [
@@ -25,7 +27,7 @@ try {
       return `선택한 ${model} 모델의 답변이야. [p. 1]`
     })
   })
-  const window = await app.firstWindow()
+  await window.reload()
   window.setDefaultTimeout(15000)
   window.on('pageerror', (error) => errors.push(error.message))
   await window.getByRole('button', { name: 'ResNet 예제 열기' }).click()
@@ -112,6 +114,8 @@ try {
   await menu.getByRole('menuitemradio', { name: 'Fast capable model', exact: true }).waitFor()
   await window.screenshot({ path: 'artifacts/custom-model-menu.png', scale: 'css' })
   await window.keyboard.press('Escape')
+  await menu.waitFor({ state: 'hidden' })
+  await window.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'AI 모델')
   assert.equal(await model.evaluate((element) => element === document.activeElement), true)
   await window.getByRole('button', { name: '연결 설정 열기' }).click()
   await window.getByRole('button', { name: 'Codex 모델', exact: true }).click()
@@ -137,7 +141,9 @@ try {
   assert.deepEqual(errors, [])
   console.log('Passed: inline model selection, Fast capability guard, request arguments, preserved conversation and draft, summary/explanation options, provider-specific persistence, Claude credit guard, minimum layout.')
 } catch (error) {
-  console.log(JSON.stringify(await (await app.firstWindow()).evaluate(() => ({focus:document.activeElement?.outerHTML.slice(0,400),items:[...document.querySelectorAll('[role=menuitemradio]')].map(el=>({name:el.getAttribute('aria-label')||el.textContent,highlighted:el.hasAttribute('data-highlighted'),checked:el.getAttribute('aria-checked')}))}))))
-  await (await app.firstWindow()).screenshot({ path: 'artifacts/models-failure.png' })
+  if (window) {
+    console.log(JSON.stringify(await window.evaluate(() => ({focus:document.activeElement?.outerHTML.slice(0,400),items:[...document.querySelectorAll('[role=menuitemradio]')].map(el=>({name:el.getAttribute('aria-label')||el.textContent,highlighted:el.hasAttribute('data-highlighted'),checked:el.getAttribute('aria-checked')}))}))))
+    await window.screenshot({ path: 'artifacts/models-failure.png' })
+  }
   throw error
 } finally { await app.close() }

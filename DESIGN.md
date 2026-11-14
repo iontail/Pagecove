@@ -24,6 +24,10 @@ Each translation starts with only a maple `한글번역` tab at the upper right 
 
 The back control beside the document title returns to the PDF drop screen. It retains files and reading positions. Use explicit loading, empty, error, disabled and focus states. Respect reduced motion.
 
+PDF text stays transparent during native selection, preserving the single canvas-rendered glyph layer. The selection toolbar is 340px wide and the expanded explanation prefers 440px, bounded by the reader. Hide the popup when its anchor scrolls out. When enough space exists above or below, cap the answer height there so the selected sentence remains visible. Outside pointer input clears the tool. Long answers scroll inside the popup.
+
+Chat suggestions send immediately. Show the current question and the beginning of its answer when a response arrives. Markdown uses short headings, clear paragraph spacing and shallow lists. Local KaTeX handles inline and display math; long expressions and tables scroll within their own bounds. Keep equations distinct without colored cards or decorative separators.
+
 ## Reading assistance
 
 Keep translation controls attached to the source column; opening translation on one page never moves another page's controls into empty side space. The first page also offers translate-all progress and stop.

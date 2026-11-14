@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ArrowUp, Check, ChevronDown, Copy, FileText, MessageSquare, PanelRightClose, Plus, Quote, X, Zap } from 'lucide-react'
 import ModelPicker from './ModelPicker'
 import ProviderLogo from './ProviderLogo'
@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { Passage } from './PdfReader'
 import type { PageContext } from '../../../shared/reading'
-import { paperPrompt, summaryPrompt, parseSummary } from '../../../shared/paper-harness'
-import type { ChatMessage, PaperSummary } from '../../../shared/paper-harness'
+import { paperPrompt, summaryPrompt, parseSummary, readingQuestions } from '../../../shared/paper-harness'
+import type { AnswerIntent, ChatMessage, PaperSummary } from '../../../shared/paper-harness'
 import type { ProviderStatus } from '../../../shared/types'
 import type { PaperSession } from '@/lib/paper-session'
 
@@ -33,12 +33,20 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
   const requestKey = `${paperId}:${provider}:${model}:${fast}`
   const active = useRef(requestKey)
   active.current = requestKey
+  const sending = useRef(false)
+  const generation = useRef(0)
   const body = useRef<HTMLDivElement>(null)
   const status = useSyncExternalStore(session?.subscribe ?? (() => () => {}), session?.snapshot ?? (() => 'PDF를 먼저 열어줘'))
-  useEffect(() => { setDraft(''); setError(''); setMessages([]); setSummary(null); setBusy(false); setTab('chat') }, [paperId])
-  useEffect(() => { setBusy(false); setError('') }, [provider, model, fast])
+  useEffect(() => { generation.current++; sending.current = false; setDraft(''); setError(''); setMessages([]); setSummary(null); setBusy(false); setTab('chat') }, [paperId])
+  useEffect(() => { generation.current++; sending.current = false; setBusy(false); setError('') }, [provider, model, fast])
   useEffect(() => { if (providerStatus && fast && !supportsFast) onFast(false) }, [providerStatus, fast, supportsFast, onFast])
-  useEffect(() => { body.current?.scrollTo({ top: tab === 'chat' ? body.current.scrollHeight : 0 }) }, [messages, busy, tab])
+  useLayoutEffect(() => {
+    const pane = body.current
+    if (!pane) return
+    const questions = pane.querySelectorAll('.chat-message.user')
+    const question = questions.item(questions.length - 1)
+    pane.scrollTo({ top: tab === 'chat' && question ? pane.scrollTop + question.getBoundingClientRect().top - pane.getBoundingClientRect().top - 8 : 0 })
+  }, [messages, busy, tab])
   useEffect(() => {
     let current = true
     setProviders([])
@@ -46,27 +54,32 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
     return () => { current = false }
   }, [provider])
   const ask = (prompt: string) => window.paperglim.askAI(provider === 'claude' ? 'claude' : 'codex', prompt, model, fast)
-  async function send() {
-    if (!draft.trim() || busy || !session || installed !== true) return
-    const question = draft.trim(), previous = messages
-    setMessages([...previous, { role: 'user', text: question }]); setDraft(''); setBusy(true); setError(''); setTab('chat')
+  async function send(question = draft.trim(), intent: AnswerIntent = passage ? 'selection' : 'chat') {
+    if (!question || busy || sending.current || !session || installed !== true) return
+    sending.current = true
+    const request = ++generation.current
+    const previous = messages
+    if (intent !== 'selection') onClearPassage()
+    setMessages([...previous, { role: 'user', text: question }]); if (question === draft.trim()) setDraft(''); setBusy(true); setError(''); setTab('chat')
     try {
       const reference = await session.reference(`${provider}:${model}`, ask)
-      const answer = await ask(paperPrompt(reference, question, previous, passage))
-      if (active.current === requestKey) setMessages([...previous, { role: 'user', text: question }, { role: 'assistant', text: answer }])
-    } catch (cause) { if (active.current === requestKey) { setError(cause instanceof Error ? cause.message : 'AI 요청에 실패했어.'); setMessages(previous); setDraft(question) } }
-    finally { if (active.current === requestKey) setBusy(false) }
+      const answer = await ask(paperPrompt(reference, question, previous, intent === 'selection' ? passage : null, intent))
+      if (active.current === requestKey && generation.current === request) setMessages([...previous, { role: 'user', text: question }, { role: 'assistant', text: answer }])
+    } catch (cause) { if (active.current === requestKey && generation.current === request) { setError(cause instanceof Error ? cause.message : 'AI 요청에 실패했어.'); setMessages(previous); setDraft((current) => current.trim() ? current : question) } }
+    finally { if (generation.current === request) { sending.current = false; setBusy(false) } }
   }
   async function summarize() {
     setTab('summary')
-    if (summary || busy || !session) return
+    if (summary || busy || sending.current || !session) return
+    sending.current = true
+    const request = ++generation.current
     setBusy(true); setError('')
     try {
       const reference = await session.reference(`${provider}:${model}`, ask)
       const value = parseSummary(await ask(summaryPrompt(reference)))
-      if (active.current === requestKey) setSummary(value)
-    } catch (cause) { if (active.current === requestKey) setError(cause instanceof Error ? cause.message : '요약하지 못했어. 다시 시도해 줘.') }
-    finally { if (active.current === requestKey) setBusy(false) }
+      if (active.current === requestKey && generation.current === request) setSummary(value)
+    } catch (cause) { if (active.current === requestKey && generation.current === request) setError(cause instanceof Error ? cause.message : '요약하지 못했어. 다시 시도해 줘.') }
+    finally { if (generation.current === request) { sending.current = false; setBusy(false) } }
   }
   async function copyPrompt() {
     try { await window.paperglim.copyText([passage ? `PDF ${passage.page}페이지에서 선택한 문장:\n${passage.text}` : '', draft].filter(Boolean).join('\n\n')); setCopied(true); setTimeout(() => setCopied(false), 1800) }
@@ -78,7 +91,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
     <div className="assistant-tabs"><button aria-pressed={tab === 'chat'} onClick={() => setTab('chat')}><MessageSquare size={14} />대화</button><button aria-pressed={tab === 'summary'} disabled={!session || installed !== true} onClick={() => void summarize()}><FileText size={14} />논문 요약</button><Button variant="ghost" size="icon-sm" aria-label="새 대화" title="새 대화 · 논문 컨텍스트 유지" disabled={busy} onClick={() => { setMessages([]); setDraft(''); setError(''); setTab('chat') }}><Plus /></Button></div>
     <p className="paper-context-status" role="status">{status}</p>
     <div className="assistant-body" ref={body}>
-      {tab === 'summary' ? <div className="paper-summary">{summary ? <><h3>3문장 요약</h3><ol>{summary.sentences.map((sentence, index) => <li key={index}>{sentence}</li>)}</ol><h3>전체 흐름</h3><AnswerText text={summary.overview} />{(['question', 'method', 'results', 'limitations'] as const).map((key, index) => <section key={key}><h4>{['문제와 동기', '핵심 방법', '주요 결과', '한계와 적용 범위'][index]}</h4><AnswerText text={summary.sections[key]} /></section>)}<Button variant="outline" size="sm" disabled={busy} onClick={() => { setSummary(null); setTab('chat') }}>요약 지우기</Button></> : <p>{busy ? '논문 전체를 바탕으로 요약하는 중…' : '논문 요약 버튼을 눌러 다시 요청해 줘.'}</p>}</div> : messages.length ? <div className="chat-messages">{messages.map((message, index) => <div key={index} className={`chat-message ${message.role}`}><strong>{message.role === 'user' ? '나' : provider === 'codex' ? 'Codex' : 'Claude Code'}</strong><AnswerText text={message.text} /></div>)}{busy && <p role="status">논문 전체를 참고해 답변하는 중…</p>}</div> : <><div className="assistant-intro"><h3>논문에 질문하기</h3><p>본문 전체를 참고해서 답해.<br />문장을 선택하면 더 구체적으로 물어볼 수 있어.</p></div><div className="question-suggestions">{['이 논문의 핵심 기여는?', '제안한 방법이 어떻게 작동해?', '실험 결과와 한계는 무엇이야?'].map((question) => <button key={question} onClick={() => setDraft(question)}>{question}</button>)}</div></>}
+      {tab === 'summary' ? <div className="paper-summary">{summary ? <><h3>3문장 요약</h3><ol>{summary.sentences.map((sentence, index) => <li key={index}><AnswerText text={sentence} /></li>)}</ol><h3>전체 흐름</h3><AnswerText text={summary.overview} />{(['question', 'method', 'results', 'limitations'] as const).map((key, index) => <section key={key}><h4>{['문제와 동기', '핵심 방법', '주요 결과', '한계와 적용 범위'][index]}</h4><AnswerText text={summary.sections[key]} /></section>)}<Button variant="outline" size="sm" disabled={busy} onClick={() => { setSummary(null); setTab('chat') }}>요약 지우기</Button></> : <p>{busy ? '논문 전체를 바탕으로 요약하는 중…' : '논문 요약 버튼을 눌러 다시 요청해 줘.'}</p>}</div> : messages.length ? <div className="chat-messages">{messages.map((message, index) => <div key={index} className={`chat-message ${message.role}`}><strong>{message.role === 'user' ? '나' : provider === 'codex' ? 'Codex' : 'Claude Code'}{message.role === 'assistant' && <button className="answer-copy" aria-label="답변 복사" title="답변 복사" onClick={() => void window.paperglim.copyText(message.text).catch(() => setError('답변을 복사하지 못했어.'))}><Copy size={12} /></button>}</strong><AnswerText text={message.text} /></div>)}{busy && <p role="status">논문 전체를 참고해 답변하는 중…</p>}</div> : <><div className="assistant-intro"><h3>논문에 질문하기</h3><p>본문 전체를 참고해서 답해.<br />문장을 선택하면 더 구체적으로 물어볼 수 있어.</p></div><div className="question-suggestions">{readingQuestions.map(({ id, label }) => <button key={id} disabled={!session || installed !== true || busy} onClick={() => void send(label, id)}>{label}</button>)}</div></>}
     </div>
     <div className="composer-area">
       {passage && <div className="passage-card"><div className="flex items-center gap-1.5"><Quote size={12} /><span>{passage.page}페이지에서 선택</span><Button variant="ghost" size="icon-xs" className="ml-auto" aria-label="선택 문장 지우기" onClick={onClearPassage}><X /></Button></div><p>{passage.text}</p></div>}
