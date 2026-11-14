@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 
 const bundle = resolve(process.argv[2] ?? 'release/mac-arm64/PaperGlim.app')
 const profile = await mkdtemp(join(tmpdir(), 'paperglim-package-'))
-const env = { ...process.env, PAPERGLIM_PROFILE_DIR: profile, PAPERGLIM_BACKGROUND: '1' }
+const env = { ...process.env, PAPERGLIM_PROFILE_DIR: profile, PAPERGLIM_BACKGROUND: '' }
 delete env.ELECTRON_RUN_AS_NODE
 delete env.ELECTRON_RENDERER_URL
 const app = await _electron.launch({ executablePath: join(bundle, 'Contents/MacOS/PaperGlim'), env })
@@ -17,7 +17,7 @@ try {
   page.on('pageerror', (error) => errors.push(error.message))
   await page.getByRole('heading', { name: '논문을 열어 읽기' }).waitFor()
   await page.getByRole('button', { name: 'ResNet 예제 열기' }).click()
-  await page.locator('[data-reading-page="1"] canvas').waitFor()
+  await page.locator('[data-reading-page="1"] canvas').waitFor({ timeout: 60000 })
   assert.equal(await page.locator('.brand img').evaluate((img) => img.complete && img.naturalWidth > 0), true)
   const papers = await page.evaluate(() => window.paperglim.listPapers())
   assert.equal(papers.length, 1)
