@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto'
+import { TranslationCacheStore } from './translation-cache'
+import { AIRequests } from './ai-requests'
 import { AnnotationStore } from './annotations'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, screen, shell } from 'electron'
 import { join } from 'node:path'
@@ -12,6 +15,7 @@ let window: BrowserWindow | null = null
 let library: PaperLibrary
 const pendingFiles: string[] = []
 const zotero = new ZoteroClient()
+const aiRequests = new AIRequests()
 
 async function openFiles(paths: string[]) {
   try {
@@ -51,6 +55,9 @@ function createWindow() {
       backgroundThrottling: !process.env.PAPERGLIM_BACKGROUND
     }
   })
+  const owner = window.webContents.id
+  window.webContents.on('did-start-loading', () => aiRequests.cancelOwner(owner))
+  window.webContents.on('destroyed', () => aiRequests.cancelOwner(owner))
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url).catch(() => dialog.showErrorBox('링크를 열 수 없어', '기본 브라우저 설정을 확인해 줘.'))
     return { action: 'deny' }
@@ -73,8 +80,18 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
+  const translations = new TranslationCacheStore(join(app.getPath('userData'), 'translations'))
+  let quitting = false
+  app.on('before-quit', (event) => {
+    if (quitting) return
+    event.preventDefault(); quitting = true
+    for (const window of BrowserWindow.getAllWindows()) aiRequests.cancelOwner(window.webContents.id)
+    void translations.flush().finally(() => app.quit())
+  })
   const annotations = new AnnotationStore(join(app.getPath('userData'), 'annotations'))
   const checkPaper = (id: string) => { if (!library.list().some((paper) => paper.id === id)) throw new Error('등록된 논문을 찾을 수 없어.') }
+  ipcMain.handle('translations:get', (_event, id: string, fingerprint: string) => { checkPaper(id); return translations.get(id, fingerprint) })
+  ipcMain.handle('translations:put', (_event, id, cache) => { checkPaper(id); return translations.put(id, cache) })
   ipcMain.handle('notes:get', (_event, id: string) => { checkPaper(id); return annotations.get(id) })
   ipcMain.handle('notes:put', (_event, id, thread) => { checkPaper(id); return annotations.put(id, thread) })
   ipcMain.handle('notes:remove', (_event, id, threadId) => { checkPaper(id); return annotations.put(id, null, threadId) })
@@ -108,11 +125,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('zotero:import', async (_event, key: string) => { const file = await zotero.resolvePdf(key); return library.add([file.path], file.paper) })
   ipcMain.handle('zotero:help', () => shell.openExternal('https://www.zotero.org/support/dev/web_api/v3/local_api'))
   ipcMain.handle('papers:drop', (_event, paths: string[]) => library.add(paths))
-  ipcMain.handle('papers:read', (_event, id: string) => library.read(id))
+  ipcMain.handle('papers:read', async (_event, id: string) => { const data = await library.read(id); return { data, fingerprint: createHash('sha256').update(data).digest('hex') } })
   ipcMain.handle('papers:page', (_event, id: string, page: number) => library.updatePage(id, page))
   ipcMain.handle('papers:remove', (_event, id: string) => library.remove(id))
   ipcMain.handle('providers:list', () => getProviders())
-  ipcMain.handle('ai:ask', (_event, provider, prompt, model, fast) => askProvider(provider, prompt, model, fast))
+  ipcMain.handle('ai:ask', (event, provider, prompt, model, fast, requestId?: string) => aiRequests.run(event.sender.id, requestId, (signal) => askProvider(provider, prompt, model, fast, signal)))
+  ipcMain.handle('ai:cancel', (event, requestId: string) => aiRequests.cancel(event.sender.id, requestId))
   ipcMain.handle('clipboard:write', (_event, text: string) => {
     if (typeof text !== 'string') throw new Error('복사할 텍스트가 필요해.')
     clipboard.writeText(text)

@@ -16,7 +16,7 @@ export async function codexModels(): Promise<AIModel[]> {
   } catch { return [] }
 }
 
-export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false): Promise<string> {
+export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false, signal?: AbortSignal): Promise<string> {
   if (typeof fast !== 'boolean') throw new Error('Fast 모드 설정을 확인해 줘.')
   if (id === 'claude' && fast) throw new Error('Claude Fast는 구독 외 크레딧 과금이 필요해. 이 앱에서는 Standard로 사용해 줘.')
   if (!['codex', 'claude'].includes(id) || typeof prompt !== 'string' || !prompt.trim() || prompt.length > 100000) throw new Error('AI 요청을 확인해 줘.')
@@ -31,19 +31,29 @@ export async function askProvider(id: 'codex' | 'claude', prompt: string, model?
   const selectedModel = id === 'codex' ? model || (await codexModels())[0]?.id : ''
   if (fast && !(await codexModels()).find((entry) => entry.id === selectedModel)?.supportsFast) throw new Error('선택한 모델의 Fast 지원을 확인할 수 없어. 다른 모델을 고르거나 Fast를 꺼줘.')
   const args = id === 'codex' ? ['exec', '--config', `service_tier="${fast ? 'fast' : 'default'}"`, ...(fast ? ['--enable', 'fast_mode'] : []), '--ephemeral', '--disable', 'memories', '--skip-git-repo-check', '--sandbox', 'read-only', ...(selectedModel ? ['--model', selectedModel] : []), '-'] : ['--print', '--no-session-persistence', '--tools', '', '--settings', '{"fastMode":false}', ...(model ? ['--model', model] : [])]
+  if (signal?.aborted) throw new Error('AI 요청을 중지했어.')
   const directory = await mkdtemp(join(tmpdir(), 'paperglim-ai-'))
   try { return await new Promise<string>((resolve, reject) => {
-    const child = spawn(executable, args, { cwd: directory, env: { ...process.env, ELECTRON_RUN_AS_NODE: '', ...(id === 'claude' ? { CLAUDE_CODE_DISABLE_FAST_MODE: '1' } : {}) }, stdio: ['pipe', 'pipe', 'pipe'] })
+    if (signal?.aborted) { reject(new Error('AI 요청을 중지했어.')); return }
+    const child = spawn(executable, args, { detached: true, cwd: directory, env: { ...process.env, ELECTRON_RUN_AS_NODE: '', ...(id === 'claude' ? { CLAUDE_CODE_DISABLE_FAST_MODE: '1' } : {}) }, stdio: ['pipe', 'pipe', 'pipe'] })
     let output = ''
     let errors = ''
     let timedOut = false
-    const timer = setTimeout(() => { timedOut = true; child.kill() }, 180000)
+    const stop = () => {
+      if (!child.pid || child.exitCode !== null || child.signalCode !== null) return
+      try { process.kill(-child.pid, 'SIGKILL') } catch { child.kill('SIGKILL') }
+    }
+    signal?.addEventListener('abort', stop, { once: true })
+    if (signal?.aborted) stop()
+    const timer = setTimeout(() => { timedOut = true; stop() }, 180000)
     child.stdout.on('data', (chunk) => { output += chunk.toString() })
     child.stderr.on('data', (chunk) => { errors = (errors + chunk.toString()).slice(-10000) })
-    child.on('error', (error) => { clearTimeout(timer); reject(error) })
+    child.on('error', (error) => { clearTimeout(timer); signal?.removeEventListener('abort', stop); reject(error) })
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (timedOut) reject(new Error('AI 요청 시간이 초과됐어. 다시 시도해 줘.'))
+      signal?.removeEventListener('abort', stop)
+      if (signal?.aborted) reject(new Error('AI 요청을 중지했어.'))
+      else if (timedOut) reject(new Error('AI 요청 시간이 초과됐어. 다시 시도해 줘.'))
       else if (code === 0 && output.trim()) resolve(output.trim())
       else if (fast && /service.?tier|fast.?mode/i.test(errors)) reject(new Error('Fast 요청이 거부됐어. 계정의 지원 여부·한도를 확인하거나 Fast를 끄고 다시 보내줘.'))
       else if (errors.includes('not supported when using Codex') || errors.includes('model_not_found')) reject(new Error('현재 계정에서 지원하지 않는 Codex 모델이야. 연결 설정에서 다른 모델을 선택해 줘.'))

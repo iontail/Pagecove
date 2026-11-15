@@ -55,6 +55,6 @@ export default function ConnectionSettings({ open, onOpenChange, provider, onPro
     <div className="settings-section-heading"><h3>Zotero</h3><Button variant="outline" size="sm" onClick={onZotero}>라이브러리 연결</Button></div>
     <p className="settings-note">로컬 개인 라이브러리의 PDF를 가져와. 연결 창의 안내 아이콘에서 설정 방법을 확인할 수 있어.</p>
     <Separator />
-    <div className="settings-section-heading"><h3>내 파일</h3></div><p className="settings-note">PDF 원본을 복사하거나 수정하지 않아. 최근 문서와 읽던 위치는 이 Mac에 저장해. 목록에서 지워도 원본 파일은 남아 있어.</p>
+    <div className="settings-section-heading"><h3>내 파일</h3></div><p className="settings-note">PDF 원본을 복사하거나 수정하지 않아. 최근 문서와 읽던 위치, 번역 결과는 이 Mac에 저장해. 저장된 번역은 페이지 번역 칸의 삭제 버튼으로 지울 수 있어. 목록에서 지워도 원본 파일은 남아 있어.</p>
   </DialogContent></Dialog>
 }

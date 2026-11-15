@@ -14,7 +14,8 @@ import type { SelectionAnchor, SelectionThread } from '../../../shared/paper-har
 
 const renderSource = ({ str, itemIndex }: { str: string; itemIndex: number }) => sourceMarkup(str, itemIndex)
 
-export default function PdfPageSpread({ fast, session, selection, selectionPinned, onAnchor, threads, onSaveThread, onRemoveThread, store, spreadWidth, paperId, page, width, renderWidth, translation, onTranslationWidth, onTranslationDragging, onTranslationReset, defaultAspect, parallel, root, provider, model, onExpand, onCollapse }: {
+export default function PdfPageSpread({ fast, session, searchLocation, selection, selectionPinned, onAnchor, threads, onSaveThread, onRemoveThread, store, spreadWidth, paperId, page, width, renderWidth, translation, onTranslationWidth, onTranslationDragging, onTranslationReset, defaultAspect, parallel, root, provider, model, onExpand, onCollapse }: {
+  searchLocation: SourceLocation | null;
   fast: boolean; session: PaperSession; store: TranslationSession; spreadWidth: number; selection: SelectionAnchor | null; selectionPinned: boolean
   onAnchor: (anchor: SelectionAnchor | null, pinned: boolean, expectedId?: string) => void; threads: SelectionThread[]; onSaveThread: (thread: SelectionThread) => Promise<void>; onRemoveThread: (id: string) => Promise<void>
   paperId: string; page: number; width: number; renderWidth: number; defaultAspect: number; parallel: boolean
@@ -30,6 +31,7 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
   const [error, setError] = useState('')
   const row = useRef<HTMLElement>(null)
   const source = useRef<HTMLDivElement>(null)
+  const locatedSearch = useRef(0)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useSyncExternalStore(store.subscribe, store.snapshot)
   const opened = parallel && store.visible.has(page)
@@ -44,14 +46,16 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
   }, [root])
 
   const highlight = useCallback(() => {
+    const focus = location ?? searchLocation
+    const highlightClass = location ? 'source-highlight' : 'source-search-highlight'
     source.current?.querySelectorAll('[data-text-index]').forEach((element) => {
       const text = element.textContent ?? ''
       element.replaceChildren(document.createTextNode(text))
-      element.classList.remove('source-highlight')
+      element.classList.remove('source-highlight', 'source-search-highlight')
       const index = Number(element.getAttribute('data-text-index'))
-      if (!location?.itemIndexes.includes(index)) return
-      const ranges = location.ranges?.filter((range) => range.itemIndex === index)
-      if (!ranges?.length) { element.classList.add('source-highlight'); return }
+      if (!focus?.itemIndexes.includes(index)) return
+      const ranges = focus.ranges?.filter((range) => range.itemIndex === index)
+      if (!ranges?.length) { element.classList.add(highlightClass); return }
       const fragment = document.createDocumentFragment()
       let cursor = 0
       for (const range of ranges.toSorted((a, b) => a.start - b.start)) {
@@ -59,7 +63,7 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
         const end = Math.max(start, Math.min(text.length, range.end))
         fragment.append(document.createTextNode(text.slice(cursor, start)))
         const mark = document.createElement('mark')
-        mark.className = 'source-highlight'
+        mark.className = highlightClass
         mark.textContent = text.slice(start, end)
         fragment.append(mark)
         cursor = end
@@ -67,7 +71,11 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
       fragment.append(document.createTextNode(text.slice(cursor)))
       element.replaceChildren(fragment)
     })
-  }, [location])
+    if (searchLocation && !location && locatedSearch.current !== searchLocation.token) {
+      const match = source.current?.querySelector<HTMLElement>('.source-search-highlight')
+      if (match) { locatedSearch.current = searchLocation.token; match.scrollIntoView({ block: 'center', inline: 'nearest' }) }
+    }
+  }, [location, searchLocation])
 
   useEffect(highlight, [highlight])
 
@@ -92,9 +100,8 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
   return <article ref={row} className="reading-spread" style={{ width: spreadWidth }} data-reading-page={page} aria-label={`${page}페이지 읽기`}>
     <span className="page-edge-label">{page}</span>
     <div className="page-translation-actions" style={{ width }}>
-      {!opened && <button className="translation-launch" disabled={!context} onClick={translatePage}>한글번역</button>}
-      {page === 1 && <button className="translation-launch translate-all" disabled={!context || store.all.running} onClick={() => { onExpand(); void store.translateAll() }}>모두 번역</button>}
-      {page === 1 && store.all.running && <button className="translation-stop" disabled={store.stopping} onClick={() => store.stop()}>{store.stopping ? '중지 중…' : '중지'}</button>}
+      {!opened && <button className="translation-launch" disabled={!context || store.loading} onClick={translatePage}>한글번역</button>}
+      {page === 1 && <button className="translation-launch translate-all" disabled={!context || store.loading || store.all.running} onClick={() => { onExpand(); void store.translateAll() }}>모두 번역</button>}
     </div>
     <div className="pdf-page-wrap" ref={source} style={{ width, height }} onMouseUp={select} onMouseMove={hover} onMouseLeave={leave}>
       {error ? <div className="page-placeholder" role="alert">{error}</div> : near ? <div className="pdf-render" style={{ width: renderWidth, transform: width === renderWidth ? undefined : `scale(${width / renderWidth})` }}><Page pageNumber={page} suspense={false} width={renderWidth} renderAnnotationLayer={false}

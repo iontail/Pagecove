@@ -1,3 +1,4 @@
+import type { TranslationCache } from './translation-cache'
 import type { SelectionThread } from './paper-harness'
 export type Paper = {
   id: string
@@ -28,6 +29,8 @@ export type ProviderStatus = {
 }
 
 export type DesktopBridge = {
+  getTranslations: (id: string, fingerprint: string) => Promise<TranslationCache | null>
+  saveTranslations: (id: string, cache: TranslationCache) => Promise<void>
   getAnnotations: (id: string) => Promise<SelectionThread[]>
   saveAnnotation: (id: string, thread: SelectionThread) => Promise<void>
   removeAnnotation: (id: string, threadId: string) => Promise<void>
@@ -40,11 +43,12 @@ export type DesktopBridge = {
   importZotero: (key: string) => Promise<Paper[]>
   openZoteroHelp: () => Promise<void>
   dropPdfs: (files: File[]) => Promise<Paper[]>
-  readPdf: (id: string) => Promise<Uint8Array>
+  readPdf: (id: string) => Promise<{ data: Uint8Array; fingerprint: string }>
   updatePage: (id: string, page: number) => Promise<void>
   removePaper: (id: string) => Promise<void>
   getProviders: () => Promise<ProviderStatus[]>
   copyText: (text: string) => Promise<void>
-  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean) => Promise<string>
+  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string) => Promise<string>
+  cancelAI: (requestId: string) => Promise<void>
   onOpenPaper: (callback: (papers: Paper[]) => void) => () => void
 }

@@ -50,3 +50,32 @@ test('provider uses cached account models, isolates working files, and reports u
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('cancelling a provider kills its actual CLI process group and removes its temporary directory', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'paperglim-cancel-test-'))
+  const previousPath = process.env.PATH, previousHome = process.env.CODEX_HOME
+  let state
+  try {
+    process.env.PATH = `${root}:${dirname(process.execPath)}`; process.env.CODEX_HOME = root
+    const statePath = join(root, 'running.json')
+    await writeFile(join(root, 'codex'), `#!${process.execPath}\nconst{spawn}=require('node:child_process');const{writeFileSync}=require('node:fs');const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'],{stdio:'ignore'});writeFileSync(${JSON.stringify(statePath)},JSON.stringify({pid:process.pid,child:child.pid,cwd:process.cwd()}));process.on('SIGTERM',()=>{});setInterval(()=>{},1000);process.stdin.resume();\n`, { mode: 0o700 })
+    const controller = new AbortController()
+    const result = askProvider('codex', 'Wait until cancelled.', undefined, false, controller.signal)
+    const rejected = assert.rejects(result, /중지/)
+    for (let i = 0; i < 100; i++) {
+      try { state = JSON.parse(await (await import('node:fs/promises')).readFile(statePath, 'utf8')); break } catch { await new Promise((done) => setTimeout(done, 10)) }
+    }
+    assert.ok(state?.pid && state?.child)
+    controller.abort(); await rejected
+    const alive = (pid) => { try { process.kill(pid, 0); return true } catch { return false } }
+    for (let i = 0; i < 100 && (alive(state.pid) || alive(state.child)); i++) await new Promise((done) => setTimeout(done, 10))
+    assert.equal(alive(state.pid), false)
+    assert.equal(alive(state.child), false)
+    await assert.rejects(() => access(state.cwd))
+  } finally {
+    if (state?.pid) { try { process.kill(-state.pid, 'SIGKILL') } catch {} }
+    if (previousPath === undefined) delete process.env.PATH; else process.env.PATH = previousPath
+    if (previousHome === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previousHome
+    await rm(root, { recursive: true, force: true })
+  }
+})

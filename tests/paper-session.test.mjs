@@ -62,15 +62,15 @@ test('protected translation tokens restore numbers and English while isolating a
   assert.equal(parseTranslation('[{"id":"b1s1","text":"100000개다."}]', [{ id: 'b1', text: '100 000 samples.', itemIndexes: [0] }])[0].text, '100000개다.')
 })
 
-test('all-page translation queues requests, reuses cached pages and can stop after current page', async () => {
+test('all-page translation queues requests, reuses cached pages and does not publish cancelled work', async () => {
   const paper = { pageCount: 3, page: async (page) => ({ paperId: 'paper', page, blocks: [{ id: 'b1', text: `Page ${page}.`, itemIndexes: [0] }] }) }
   let calls = 0, active = 0, maximum = 0
-  const store = new TranslationSession(paper, async (prompt) => {
+  const store = new TranslationSession(paper, () => ({ cancel: async () => {}, ask: async (prompt) => {
     calls++; active++; maximum = Math.max(maximum, active)
     await new Promise((resolve) => setTimeout(resolve, 2))
     active--
     return JSON.stringify(JSON.parse(prompt.split('\n').at(-1)).flatMap((block) => block.sentences.map(({ id, text }) => ({ id, text }))))
-  })
+  } }))
   await store.translate(await paper.page(1))
   await store.translateAll()
   assert.equal(calls, 3)
@@ -78,10 +78,10 @@ test('all-page translation queues requests, reuses cached pages and can stop aft
   assert.equal(store.all.completed, 3)
   await store.translateAll(); assert.equal(calls, 3)
   let release
-  const stopped = new TranslationSession(paper, (prompt) => new Promise((resolve) => { release = () => resolve(JSON.stringify(JSON.parse(prompt.split('\n').at(-1)).flatMap((block) => block.sentences.map(({ id, text }) => ({ id, text }))))) }))
+  const stopped = new TranslationSession(paper, () => ({ cancel: async () => {}, ask: (prompt) => new Promise((resolve) => { release = () => resolve(JSON.stringify(JSON.parse(prompt.split('\n').at(-1)).flatMap((block) => block.sentences.map(({ id, text }) => ({ id, text }))))) }) }))
   const all = stopped.translateAll()
   while (!release) await new Promise((resolve) => setTimeout(resolve, 1))
   stopped.stop(); release(); await all
-  assert.equal(stopped.all.completed, 1)
+  assert.equal(stopped.all.completed, 0)
   assert.equal(stopped.visible.has(2), false)
 })

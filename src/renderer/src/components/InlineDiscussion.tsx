@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, BookOpen, Loader2, Trash2, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Loader2, Square, Trash2, X } from 'lucide-react'
+import { AIRequest } from '@/lib/ai-request'
 import AnswerText from './AnswerText'
 import { Button } from '@/components/ui/button'
 import { paperPrompt } from '../../../shared/paper-harness'
@@ -18,6 +19,10 @@ export default function InlineDiscussion({ fast, anchor, thread, source, session
   const [messages, setMessages] = useState<ChatMessage[]>(thread?.messages ?? [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const pending = useRef<AIRequest | null>(null)
+  const draftInput = useRef<HTMLInputElement>(null)
+  useEffect(() => () => { void pending.current?.cancel().catch(() => {}) }, [anchor.id])
   const [expanded, setExpanded] = useState(!!thread?.messages.length)
   const [position, setPosition] = useState({ left: 0, top: 0, width: 340, maxHeight: 560, visible: false })
   const popup = useRef<HTMLDivElement>(null)
@@ -48,26 +53,29 @@ export default function InlineDiscussion({ fast, anchor, thread, source, session
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) }
   }, [onClose, source])
   async function send(question = draft.trim()) {
-    if (!question || busy) return
+    if (!question || busy || pending.current) return
+    const operation = new AIRequest(provider, model, fast)
+    pending.current = operation
+    setNotice('')
     onPin(); setExpanded(true); setBusy(true); setError(''); setDraft('')
     const previous = messages
     const exchange: ChatMessage[] = [...previous, { role: 'user', text: question }]
     setMessages(exchange)
     try {
-      const ask = (prompt: string) => window.paperglim.askAI(provider === 'claude' ? 'claude' : 'codex', prompt, model, fast)
-      const reference = await session.reference(`${provider}:${model}`, ask)
-      const answer = await ask(paperPrompt(reference, question, previous, anchor))
+      const reference = await operation.reference(session)
+      const answer = await operation.ask(paperPrompt(reference, question, previous, anchor))
       const complete: ChatMessage[] = [...exchange, { role: 'assistant', text: answer }]
       setMessages(complete)
       try { await onSave({ ...anchor, messages: complete, updatedAt: new Date().toISOString() }) }
       catch { setError('답변은 표시했지만 저장하지 못했어. 이 창을 닫기 전에 내용을 복사해 둬.') }
-    } catch (cause) { setMessages(previous); setError(cause instanceof Error ? cause.message : '설명 요청에 실패했어.'); setDraft(question) }
-    finally { setBusy(false) }
+    } catch (cause) { setMessages(previous); if (operation.cancelled) setNotice('요청을 중지했어.'); else setError(cause instanceof Error ? cause.message : '설명 요청에 실패했어.'); setDraft((current) => current.trim() ? current : question) }
+    finally { if (pending.current === operation) pending.current = null; setBusy(false) }
   }
   return createPortal(<div ref={popup} className={`selection-popover ${expanded ? 'selection-expanded' : ''}`} style={{ left: position.left, top: position.top, width: position.width, maxHeight: position.maxHeight, visibility: position.visible ? 'visible' : 'hidden' }} inert={!position.visible} role={expanded ? 'dialog' : 'toolbar'} aria-label={expanded ? '선택 영역 설명' : '선택 영역 도구'} onMouseEnter={onHold} onMouseLeave={onLeave} onFocus={onPin}>
     {expanded ? <><header><strong>{anchor.page}페이지 · 선택 영역</strong><div>{thread && <Button variant="ghost" size="icon-xs" disabled={busy} aria-label="이 선택 영역 설명 삭제" onClick={() => void onRemove(anchor.id).then(onClose).catch(() => setError('설명을 지우지 못했어.'))}><Trash2 /></Button>}<Button variant="ghost" size="icon-xs" aria-label="선택 영역 설명 닫기" onClick={onClose}><X /></Button></div></header><blockquote>{anchor.text}</blockquote><div className="selection-messages" ref={body}>{messages.map((message, index) => <div key={index} className={`selection-message ${message.role}`}><strong>{message.role === 'user' ? '나' : '설명'}</strong><AnswerText text={message.text} citations={message.role === 'assistant'} /></div>)}{busy && <p role="status"><Loader2 className="animate-spin" />논문 전체의 맥락을 확인하는 중…</p>}</div></> : <Button variant="ghost" size="sm" onPointerDown={(event) => event.preventDefault()} onClick={() => void send('이 부분을 설명해 줘.')}><BookOpen />설명</Button>}
-    <form className="selection-composer" onSubmit={(event) => { event.preventDefault(); void send() }}><input aria-label={expanded ? '선택 영역 후속 질문' : '선택 영역에 질문'} placeholder={expanded ? '이 부분에 대해 이어서 질문해…' : '이 부분에 질문…'} value={draft} onChange={(event) => { setDraft(event.target.value); onPin() }} /><Button size="icon-sm" aria-label="선택 영역 질문 보내기" disabled={busy || !draft.trim()} type="submit"><ArrowUp /></Button></form>
+    <form className="selection-composer" onSubmit={(event) => { event.preventDefault(); void send() }}><input ref={draftInput} aria-label={expanded ? '선택 영역 후속 질문' : '선택 영역에 질문'} placeholder={expanded ? '이 부분에 대해 이어서 질문해…' : '이 부분에 질문…'} value={draft} onChange={(event) => { setDraft(event.target.value); onPin() }} />{busy ? <Button key="stop" size="icon-sm" aria-label="선택 영역 요청 중지" type="button" onClick={async (event) => { event.preventDefault(); try { await pending.current?.cancel() } catch { setError('중지 요청을 보내지 못했어.') } finally { draftInput.current?.focus() } }}><Square size={13} /></Button> : <Button key="send" size="icon-sm" aria-label="선택 영역 질문 보내기" disabled={!draft.trim()} type="submit"><ArrowUp /></Button>}</form>
     {!expanded && <Button variant="ghost" size="icon-xs" aria-label="선택 영역 도구 닫기" onClick={onClose}><X /></Button>}
+    {notice && <p className="selection-notice" role="status">{notice}</p>}
     {error && <p className="selection-error" role="alert">{error}</p>}
   </div>, document.body)
 }

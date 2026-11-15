@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { DesktopBridge, Paper } from '../shared/types'
 
 const bridge: DesktopBridge = {
+  getTranslations: (id, fingerprint) => ipcRenderer.invoke('translations:get', id, fingerprint),
+  saveTranslations: (id, cache) => ipcRenderer.invoke('translations:put', id, cache),
   getAnnotations: (id) => ipcRenderer.invoke('notes:get', id),
   saveAnnotation: (id, thread) => ipcRenderer.invoke('notes:put', id, thread),
   removeAnnotation: (id, threadId) => ipcRenderer.invoke('notes:remove', id, threadId),
@@ -19,7 +21,8 @@ const bridge: DesktopBridge = {
   removePaper: (id) => ipcRenderer.invoke('papers:remove', id),
   getProviders: () => ipcRenderer.invoke('providers:list'),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
-  askAI: (provider, prompt, model, fast = false) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast),
+  askAI: (provider, prompt, model, fast = false, requestId) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId),
+  cancelAI: (requestId) => ipcRenderer.invoke('ai:cancel', requestId),
   onOpenPaper: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, papers: Paper[]) => callback(papers)
     ipcRenderer.on('papers:opened', listener)

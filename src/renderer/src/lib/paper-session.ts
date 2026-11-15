@@ -8,6 +8,7 @@ import type { PaperContext } from '../../../shared/paper-harness.ts'
 
 export class PaperSession {
   private pdf?: PDFDocumentProxy
+  private fingerprint = ''
   private ready: Promise<PDFDocumentProxy>
   private resolve!: (pdf: PDFDocumentProxy) => void
   private reject!: (error: Error) => void
@@ -23,9 +24,9 @@ export class PaperSession {
     this.ready = new Promise((resolve, reject) => { this.resolve = resolve; this.reject = reject })
     void this.ready.catch(() => {})
   }
-  attach(pdf: PDFDocumentProxy, ops: Parameters<typeof graphicRegions>[1]) {
-    if (this.pdf && this.pdf.fingerprints[0] !== pdf.fingerprints[0]) { this.pages.clear(); this.whole = undefined; this.references.clear() }
-    this.ops = ops; this.pdf = pdf; this.resolve(pdf); this.ready = Promise.resolve(pdf)
+  attach(pdf: PDFDocumentProxy, ops: Parameters<typeof graphicRegions>[1], fingerprint = pdf.fingerprints.join(':')) {
+    if (this.pdf && this.fingerprint !== fingerprint) { this.pages.clear(); this.whole = undefined; this.references.clear() }
+    this.fingerprint = fingerprint; this.ops = ops; this.pdf = pdf; this.resolve(pdf); this.ready = Promise.resolve(pdf)
   }
   fail(error: Error) { this.reject(error) }
   get pageCount() { return this.pdf?.numPages ?? 0 }
