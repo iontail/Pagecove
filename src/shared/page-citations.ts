@@ -1,11 +1,13 @@
 import { visit } from 'unist-util-visit'
-import type { Root, PhrasingContent, Emphasis } from 'mdast'
+import type { Root, PhrasingContent, Paragraph, Blockquote } from 'mdast'
 
 const citation = /\[pp?\.\s*(\d+(?:\s*(?:[-–]\s*\d+|,\s*(?:p\.\s*)?\d+))*)\]/gi
 
 export default function pageCitations() {
   return (tree: Root) => {
-    visit(tree, 'paragraph', (paragraph) => {
+    const sources: Paragraph[] = []
+    visit(tree, ['paragraph', 'heading', 'tableCell'], (node) => {
+      if (node.type !== 'paragraph' && node.type !== 'heading' && node.type !== 'tableCell') return
       const pages: [number, number][] = []
       const strip = (children: PhrasingContent[]): PhrasingContent[] => children.map((child): PhrasingContent => {
         if (child.type === 'text') return { ...child, value: child.value.replace(citation, (original, body: string) => {
@@ -20,7 +22,7 @@ export default function pageCitations() {
         if (child.type === 'strong' || child.type === 'emphasis' || child.type === 'delete') return { ...child, children: strip(child.children) }
         return child
       })
-      const children = strip(paragraph.children)
+      const children = strip(node.children)
       if (!pages.length) return
       const merged: [number, number][] = []
       for (const [start, end] of pages.sort((a, b) => a[0] - b[0])) {
@@ -29,10 +31,19 @@ export default function pageCitations() {
         else merged.push([start, end])
       }
       const label = merged.map(([start, end]) => start === end ? String(start) : `${start}–${end}`).join(', ')
-      const note: Emphasis = { type: 'emphasis', data: { hName: 'span', hProperties: { className: ['answer-citation'], role: 'note', ariaLabel: `근거 페이지 ${label}`, title: `근거 페이지 ${label}` } }, children: [{ type: 'text', value: `p. ${label}` }] }
       const tail = children.at(-1)
       if (tail?.type === 'text') tail.value = tail.value.trimEnd()
-      paragraph.children = [...children, { type: 'text', value: ' ' }, note]
+      node.children = children
+      const excerpt = children.flatMap((child) => child.type === 'text' ? [child.value] : 'children' in child ? child.children.filter((part) => part.type === 'text').map((part) => part.value) : []).join('').trim()
+      const preview = Array.from(excerpt).slice(0, 64).join('')
+      sources.push({ type: 'paragraph', children: [{ type: 'text', value: `${preview}${excerpt.length > 64 ? '…' : ''} · p. ${label}` }] })
     })
+    if (sources.length) {
+      const details: Blockquote = { type: 'blockquote', data: { hName: 'details', hProperties: { className: ['answer-sources'] } }, children: [
+        { type: 'paragraph', data: { hName: 'summary' }, children: [{ type: 'text', value: '근거 보기' }] },
+        ...sources
+      ] }
+      tree.children.push(details)
+    }
   }
 }

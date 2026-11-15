@@ -8,7 +8,7 @@ A black desktop workspace with neutral controls. Only the translation uses pale 
 
 ## Foundations
 
-The app identity is an open scholarly volume on an ink-colored tile, with ivory pages, a drawn serif P and an oxblood ribbon. Use quiet binding detail and controlled page shading, with no sparkles, folded-file symbol or AI badge. The header mark crops the same book artwork without the tile or shadow. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 32–128px rather than adding fine decorative detail.
+The app identity is a custom geometric PG monogram in soft white on a graphite tile. No books, ribbons, folded pages or sparkles. The header uses the same letter outlines without the tile. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 16–128px.
 
 - Shell `#141415`, sidebar `#111112`, reading ground `#181819`.
 - Main text `#e8e8eb`, secondary text `#a0a0a5`, separators `#2e2e32`.
@@ -28,7 +28,7 @@ PDF text stays transparent during native selection, preserving the single canvas
 
 Chat suggestions send immediately. Show the current question and the beginning of its answer when a response arrives. Markdown uses short headings, clear paragraph spacing and shallow lists. Local KaTeX handles inline and display math; long expressions and tables scroll within their own bounds. Keep equations distinct without colored cards or decorative separators.
 
-Group source pages once at the end of each answer paragraph. Deduplicate page references and compact consecutive ranges without dropping cited pages. Use secondary text at 85% of the body size, with no badge background, superscript, or link affordance. Keep user-authored messages, code and equations unchanged.
+Remove page citations from the answer body and gather them into one native disclosure at the bottom, labeled `근거 보기`, closed by default. Each entry pairs a short claim excerpt with its source pages. Deduplicate references per claim and compact consecutive ranges without dropping pages. Summaries use one disclosure for the whole summary. Keep user-authored messages, code and equations unchanged.
 
 ## Reading assistance
 

@@ -2,7 +2,7 @@
 
 macOS에서 논문 PDF와 AI를 나란히 두고 읽는 개인용 앱.
 
-[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.3)
+[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.4)
 
 macOS 13 이상의 Apple Silicon Mac 전용이야. DMG·ZIP을 제공하며 Intel Mac은 지원하지 않아. 현재 베타는 Apple 개발자 인증서 서명·공증을 받지 않았어. 처음 실행할 때 차단되면 파일 출처를 확인한 뒤 시스템 설정의 개인정보 보호 및 보안에서 **그래도 열기**를 사용할 수 있어. [Apple 안내](https://support.apple.com/ko-kr/102445)
 
@@ -40,7 +40,7 @@ npx electron-builder --mac --arm64 --publish never
 
 `website/`는 빌드 과정이 필요 없는 다운로드 사이트 원본이야. `iontail.github.io` 저장소의 `paperglim/`에 HTML·CSS·assets를 복사해서 배포해. 버전을 올릴 때 `website/index.html`의 버전과 다운로드 링크를 실제 릴리스에 맞춰 갱신해야 해. 기존 개인 사이트의 Jekyll 설정이나 루트 홈페이지는 바꾸지 않아.
 
-아이콘 원본은 `resources/icon.svg`야. 펼친 학술 서적과 세리프 P, 와인색 책갈피로 읽기 앱의 정체성을 표현해. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 책 마크를 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
+아이콘 원본은 `resources/icon.svg`야. 흑연색 바탕에 직접 그린 PG 이니셜을 얹었어. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 이니셜 마크를 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
 
 `node scripts/check-package.mjs`는 실제 Apple Silicon 배포 앱의 실행·번들 PDF·아이콘·모델 메뉴를 검사해. `node scripts/check-site.mjs`는 Google Chrome으로 1440·820·390·320px 화면, 이미지·섹션 링크·키보드 FAQ·동작 줄이기를 확인하고 `artifacts/site-*.png`에 화면을 저장해.
 
@@ -80,7 +80,7 @@ Claude는 모델 별칭을 선택해 해당 요청의 `--model`로 전달해. Cl
 
 `paper-harness.ts`는 일반 질문, 핵심 기여, 방법, 결과·한계, 선택 영역 설명을 각각 다른 과제로 구성해. 추천 질문은 입력칸만 채우지 않고 즉시 요청하며, 해당 버튼의 내부 과제는 사용자의 질문 문구와 분리돼. 기본 답변은 핵심부터 시작하고 필요한 개념만 정의하며, 논문 주장·일반 배경·답변자의 해석을 구분하고 페이지 근거를 붙이도록 지시해. 잘못된 질문의 전제도 그대로 긍정하지 않도록 해. 짧은 질문에 불필요한 긴 형식을 강제하지 않고 자세한 요청에서는 분량을 늘릴 수 있어. 이 규칙이 내용의 정확성을 보장하는 것은 아니야.
 
-페이지 근거는 문장마다 붙이지 않고 필요한 핵심 수치·수식·결론에만 남기도록 해. 일반 답변은 보통 2~3곳, 단답은 끝에 한 번을 권장하되 다른 핵심 근거가 필요하면 더 표시할 수 있어. 화면에서는 기존 답변도 같은 문단의 중복 근거를 합쳐 문단 끝에 작은 보조 표시로 보여줘. 페이지를 빠뜨리지 않고 연속 범위만 묶으며, 원래 답변·코드·수식·사용자 질문은 바꾸지 않아.
+페이지 근거는 문장마다 붙이지 않고 필요한 핵심 수치·수식·결론에만 남기도록 해. 일반 답변은 보통 2~3곳, 단답은 끝에 한 번을 권장하되 다른 핵심 근거가 필요하면 더 표시할 수 있어. 화면에서는 기존 답변도 본문의 페이지 표기를 빼고, 답변 아래 접힌 **근거 보기** 하나에 모아. 펼치면 주장 일부와 근거 페이지를 함께 확인할 수 있어. 요약과 선택 영역 설명에도 같은 방식을 적용해. 페이지를 빠뜨리지 않고 연속 범위만 묶으며, 원래 답변·코드·수식·사용자 질문은 바꾸지 않아.
 
 `AnswerText`는 Markdown과 KaTeX를 사용해 문장 속 `$...$`, 독립된 `$$...$$` 수식을 표시해. 기존 `\(...\)`, `\[...\]`도 코드 영역을 보존하면서 변환해. 긴 수식과 표는 해당 영역에서만 가로로 스크롤하고, 해석할 수 없는 수식은 답변 전체를 숨기지 않고 원문으로 남겨. HTML은 실행하지 않고 외부 이미지도 불러오지 않아. 수식 폰트는 앱에 포함돼. 플러그인과 CSS는 같은 KaTeX 버전을 쓰도록 고정했어. [KaTeX 옵션](https://katex.org/docs/options)
 

@@ -1,7 +1,7 @@
 {
   "name": "paperglim",
   "productName": "PaperGlim",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "A personal workspace for reading papers with your AI.",
   "main": "./out/main/index.js",

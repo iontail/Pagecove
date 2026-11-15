@@ -12,9 +12,9 @@ const iconset = join(directory, 'icon.iconset')
 await mkdir(iconset)
 const source = await readFile('resources/icon.svg', 'utf8')
 const defs = source.match(/<defs>[\s\S]*?<\/defs>/)?.[0]
-const book = source.match(/  <g id="book"[\s\S]*<\/g>/)?.[0]
-assert.ok(defs && book, 'The icon needs its definitions and book group')
-const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="190 270 644 510" fill="none">\n${defs}\n${book.replace(' filter="url(#shadow)"', '')}\n</svg>\n`
+const markGroup = source.match(/  <g id="mark"[\s\S]*<\/g>/)?.[0]
+assert.ok(defs && markGroup, 'The icon needs its definitions and mark group')
+const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="220 300 600 420" fill="none">\n${defs}\n${markGroup}\n</svg>\n`
 await writeFile('src/renderer/src/assets/paperglim.svg', mark)
 await writeFile('website/assets/mark.svg', mark)
 const browser = await chromium.launch({ channel: 'chrome' })

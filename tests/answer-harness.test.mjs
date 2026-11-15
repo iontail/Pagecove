@@ -5,18 +5,27 @@ import { paperPrompt, readingQuestions, summaryPrompt } from '../src/shared/pape
 import { selectionPopup } from '../src/shared/selection-layout.ts'
 import pageCitations from '../src/shared/page-citations.ts'
 
-test('paragraph citations merge without losing distinct pages or rewriting math and code', () => {
+test('answer sources collapse once, preserving claims, pages, math and code', () => {
   const math = { type: 'inlineMath', value: 'x_{[p. 8]}' }
   const code = { type: 'inlineCode', value: '[p. 9]' }
   const link = { type: 'link', url: 'https://example.com', children: [{ type: 'text', value: '[p. 10]' }] }
   const paragraph = { type: 'paragraph', children: [{ type: 'text', value: '첫 설명. [p. 3] ' }, math, { type: 'text', value: '다음 설명. [p. 3] [p. 4–5] [p. 7] ' }, code, link] }
   const other = { type: 'paragraph', children: [{ type: 'text', value: '다른 주장. [p. 3]' }] }
-  pageCitations()({ type: 'root', children: [paragraph, other] })
-  const note = paragraph.children.at(-1)
-  assert.equal(note.data.hName, 'span')
-  assert.deepEqual(note.data.hProperties.className, ['answer-citation'])
-  assert.equal(note.children[0].value, 'p. 3–5, 7')
-  assert.equal(other.children.at(-1).children[0].value, 'p. 3')
+  const heading = { type: 'heading', depth: 3, children: [{ type: 'text', value: '결과 [p. 6]' }] }
+  const cell = { type: 'tableCell', children: [{ type: 'text', value: '수치 [p. 7]' }] }
+  const tree = { type: 'root', children: [paragraph, other, heading, { type: 'table', children: [{ type: 'tableRow', children: [cell] }] }] }
+  pageCitations()(tree)
+  const details = tree.children.at(-1)
+  assert.equal(details.data.hName, 'details')
+  assert.deepEqual(details.data.hProperties.className, ['answer-sources'])
+  assert.equal(details.data.hProperties.open, undefined)
+  assert.equal(details.children[0].data.hName, 'summary')
+  assert.equal(details.children[0].children[0].value, '근거 보기')
+  assert.match(details.children[1].children[0].value, /첫 설명.*p\. 3–5, 7$/)
+  assert.equal(details.children[2].children[0].value, '다른 주장. · p. 3')
+  assert.equal(heading.children[0].value, '결과')
+  assert.equal(cell.children[0].value, '수치')
+  assert.equal(details.children.length, 5)
   assert.equal(paragraph.children[1], math)
   assert.ok(paragraph.children.includes(code) && paragraph.children.includes(link))
   assert.ok(!paragraph.children.filter((child) => child.type === 'text').some((child) => child.value.includes('[p.')))
