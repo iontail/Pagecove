@@ -8,7 +8,7 @@ A black desktop workspace with neutral controls. Only the translation uses pale 
 
 ## Foundations
 
-The app identity is a split frame with two opposed, rounded forms, offset slightly across diagonal openings. Use soft white on a graphite tile. Keep the 180-degree relationship, optical stroke weight and open gaps; no initials, books, ribbons or sparkles. The header uses the same silhouette without the tile. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 16–128px.
+The app identity is a split frame with two offset angular brackets with diagonal openings. Use soft white on a graphite tile. Preserve the approved straight corners, diagonal cuts, proportions and open gaps; no initials, books, ribbons or sparkles. The header uses the same silhouette without the tile. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 16–128px.
 
 - Shell `#141415`, sidebar `#111112`, reading ground `#181819`.
 - Main text `#e8e8eb`, secondary text `#a0a0a5`, separators `#2e2e32`.

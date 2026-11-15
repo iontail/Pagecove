@@ -14,7 +14,7 @@ const source = await readFile('resources/icon.svg', 'utf8')
 const defs = source.match(/<defs>[\s\S]*?<\/defs>/)?.[0]
 const markGroup = source.match(/  <g id="mark"[\s\S]*<\/g>/)?.[0]
 assert.ok(defs && markGroup, 'The icon needs its definitions and mark group')
-const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="228 224 568 576" fill="none">\n${defs}\n${markGroup}\n</svg>\n`
+const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="292 246 440 532" fill="none">\n${defs}\n${markGroup}\n</svg>\n`
 await writeFile('src/renderer/src/assets/paperglim.svg', mark)
 await writeFile('website/assets/mark.svg', mark)
 const browser = await chromium.launch({ channel: 'chrome' })
