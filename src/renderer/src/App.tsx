@@ -11,10 +11,8 @@ import { defaultPanels, panelLayout } from '../../shared/panels'
 import AssistantPanel from '@/components/AssistantPanel'
 import ConnectionSettings from '@/components/ConnectionSettings'
 import ZoteroLibrary from '@/components/ZoteroLibrary'
-import type { Passage } from '@/components/PdfReader'
 import type { Paper, ZoteroCatalog, ZoteroCollection } from '../../shared/types'
 import { collectionRows, inCollection } from '../../shared/collections'
-import type { PageContext } from '../../shared/reading'
 
 const PdfReader = lazy(() => import('@/components/PdfReader'))
 
@@ -25,7 +23,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [zoteroOpen, setZoteroOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
-  const [passage, setPassage] = useState<Passage | null>(null)
   const [error, setError] = useState('')
   const [opening, setOpening] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -42,7 +39,6 @@ export default function App() {
   function chooseProvider(value: string) { setProvider(value); localStorage.setItem('paperglim:provider', value); chooseFast(false) }
   const [collections, setCollections] = useState<ZoteroCollection[]>([])
   const [collection, setCollection] = useState(() => localStorage.getItem('paperglim:collection') ?? '')
-  const [pageContext, setPageContext] = useState<PageContext | null>(null)
   const sessions = useRef(new Map<string, PaperSession>())
   const session = useMemo(() => {
     if (!activeId) return null
@@ -120,8 +116,6 @@ export default function App() {
 
   useEffect(() => window.paperglim.onOpenPaper((items) => { void acceptPapers(items).catch(() => setError('문서를 불러올 수 없어.')) }), [acceptPapers])
   useEffect(() => {
-    setPassage(null)
-    setPageContext(null)
     setTranslationOpen(false)
     if (activeId) localStorage.setItem('paperglim:active', activeId)
     else localStorage.removeItem('paperglim:active')
@@ -175,9 +169,9 @@ export default function App() {
         <div className="library-bottom"><Button variant="outline" className="w-full" disabled={opening} onClick={() => void openPdfs()}>{opening ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <FolderOpen data-icon="inline-start" />}PDF 열기<span className="ml-auto text-muted-foreground text-xs">⌘O</span></Button><p>원본은 그대로, 읽던 곳은 기억해.</p></div>
       </aside>
       <PanelResizer side="library" width={panels.library} min={208} max={panels.libraryMax} onChange={(library) => setPreferredPanels((current) => ({ ...current, library }))} onDragging={setResizing} onReset={() => setPreferredPanels((current) => ({ ...current, library: defaultPanels.library }))} />
-      <main className="reading-main"><Suspense fallback={<div className="pdf-loading"><Loader2 className="animate-spin" />읽기 공간 준비 중</div>}><PdfReader fast={fast} session={session} threads={notes.paperId === activeId ? notes.threads : []} onSaveThread={saveThread} onRemoveThread={removeThread} resizing={resizing} onHome={() => selectPaper(null)} paper={activePaper} onOpen={() => void openPdfs()} onPage={updatePage} onContext={setPageContext} provider={provider} model={model} translationOpen={translationOpen} onTranslationChange={(open) => { setTranslationOpen(open); if (open) setAssistantOpen(false) }} onSelect={(selection) => setPassage(selection)} /></Suspense>{!assistantOpen && <Button className="reopen-assistant" variant="outline" size="icon" aria-label="AI 패널 열기" onClick={() => setAssistantOpen(true)}><PanelRightOpen /></Button>}</main>
+      <main className="reading-main"><Suspense fallback={<div className="pdf-loading"><Loader2 className="animate-spin" />읽기 공간 준비 중</div>}><PdfReader fast={fast} session={session} threads={notes.paperId === activeId ? notes.threads : []} onSaveThread={saveThread} onRemoveThread={removeThread} resizing={resizing} onHome={() => selectPaper(null)} paper={activePaper} onOpen={() => void openPdfs()} onPage={updatePage} provider={provider} model={model} translationOpen={translationOpen} onTranslationChange={(open) => { setTranslationOpen(open); if (open) setAssistantOpen(false) }} /></Suspense>{!assistantOpen && <Button className="reopen-assistant" variant="outline" size="icon" aria-label="AI 패널 열기" onClick={() => setAssistantOpen(true)}><PanelRightOpen /></Button>}</main>
       {assistantOpen && <PanelResizer side="assistant" width={panels.assistant} min={260} max={panels.assistantMax} onChange={(assistant) => setPreferredPanels((current) => ({ ...current, assistant }))} onDragging={setResizing} onReset={() => setPreferredPanels((current) => ({ ...current, assistant: defaultPanels.assistant }))} />}
-      <AssistantPanel onProvider={chooseProvider} fast={fast} onFast={chooseFast} onModel={chooseModel} session={session} open={assistantOpen} paperId={activeId} passage={passage} provider={provider} model={model} context={pageContext} onSettings={() => setSettingsOpen(true)} onClose={() => setAssistantOpen(false)} onClearPassage={() => setPassage(null)} />
+      <AssistantPanel onProvider={chooseProvider} fast={fast} onFast={chooseFast} onModel={chooseModel} session={session} open={assistantOpen} paperId={activeId} provider={provider} model={model} onSettings={() => setSettingsOpen(true)} onClose={() => setAssistantOpen(false)} />
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button variant="ghost" size="icon-sm" aria-label="오류 안내 닫기" onClick={() => setError('')}><X /></Button></div>}
       <ZoteroLibrary open={zoteroOpen} onOpenChange={setZoteroOpen} onImport={acceptPapers} initialCollection={collection} onCatalog={acceptCatalog} />
       <ConnectionSettings model={model} onModel={chooseModel} onZotero={() => { setSettingsOpen(false); setZoteroOpen(true) }} open={settingsOpen} onOpenChange={setSettingsOpen} provider={provider} onProviderChange={chooseProvider} />

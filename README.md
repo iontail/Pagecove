@@ -2,7 +2,7 @@
 
 macOS에서 논문 PDF와 AI를 나란히 두고 읽는 개인용 앱.
 
-[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.4)
+[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.5)
 
 macOS 13 이상의 Apple Silicon Mac 전용이야. DMG·ZIP을 제공하며 Intel Mac은 지원하지 않아. 현재 베타는 Apple 개발자 인증서 서명·공증을 받지 않았어. 처음 실행할 때 차단되면 파일 출처를 확인한 뒤 시스템 설정의 개인정보 보호 및 보안에서 **그래도 열기**를 사용할 수 있어. [Apple 안내](https://support.apple.com/ko-kr/102445)
 
@@ -40,7 +40,7 @@ npx electron-builder --mac --arm64 --publish never
 
 `website/`는 빌드 과정이 필요 없는 다운로드 사이트 원본이야. `iontail.github.io` 저장소의 `paperglim/`에 HTML·CSS·assets를 복사해서 배포해. 버전을 올릴 때 `website/index.html`의 버전과 다운로드 링크를 실제 릴리스에 맞춰 갱신해야 해. 기존 개인 사이트의 Jekyll 설정이나 루트 홈페이지는 바꾸지 않아.
 
-아이콘 원본은 `resources/icon.svg`야. 흑연색 바탕에 직접 그린 PG 이니셜을 얹었어. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 이니셜 마크를 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
+아이콘 원본은 `resources/icon.svg`야. 흑연색 바탕에 두 면이 엇갈리는 틈을 둔 둥근 문양을 얹었어. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 문양를 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
 
 `node scripts/check-package.mjs`는 실제 Apple Silicon 배포 앱의 실행·번들 PDF·아이콘·모델 메뉴를 검사해. `node scripts/check-site.mjs`는 Google Chrome으로 1440·820·390·320px 화면, 이미지·섹션 링크·키보드 FAQ·동작 줄이기를 확인하고 `artifacts/site-*.png`에 화면을 저장해.
 
@@ -71,6 +71,8 @@ Claude는 모델 별칭을 선택해 해당 요청의 `--model`로 전달해. Cl
 본문이 65,000자 이하면 전체 추출 본문을 제공하고, 더 긴 논문은 모든 페이지를 읽은 뒤 페이지 번호를 유지하는 구간별 근거 요약을 만들어 모델별로 공유해. 이 압축 과정에는 추가 AI 요청이 필요하며 세부 내용이 생략될 수 있어. 준비 상태를 오른쪽 패널에 표시해. 스캔 PDF OCR과 도표 이미지 자체 분석은 아직 지원하지 않아.
 
 앱의 본문 추출·구간 요약 캐시를 공유하는 방식이며 CLI 서버의 대화 세션이나 KV 캐시를 재사용하는 기능은 아니야. CLI는 매 요청 `--ephemeral` 또는 `--no-session-persistence`로 실행하고, 본문과 해당 대화의 이전 내용은 요청에 다시 전달해. 다른 선택 영역이나 다른 대화의 질문·답변은 섞지 않아.
+
+PDF 선택문은 오른쪽 채팅에 자동으로 붙이지 않아. 오른쪽은 항상 논문 전체에 질문하고, 선택한 부분은 PDF 위 설명 창에서 후속 질문을 이어가. ⌘Enter로 질문을 보내며 한글 조합 중에는 전송하지 않아. 답변의 웹 링크는 기본 브라우저에서 열어.
 
 오른쪽 패널 대화와 질문 초안은 임시 메모리에 두고 새 대화·문서 전환·앱 새로고침으로 지워. **선택 영역의 설명과 후속 대화는 사용자가 다시 볼 수 있도록 논문별로 앱에 저장해.** PDF 위의 푸른색 표시를 호버하면 해당 영역의 기록이 열리고, 설명 창의 삭제 버튼으로 그 기록을 지울 수 있어. AI 서비스의 보관 정책과 기존 CLI 기록은 앱의 세션 설정과 별개야.
 

@@ -11,18 +11,16 @@ import { selectedAnchor } from '@/lib/selection'
 import type { PaperSession } from '@/lib/paper-session'
 import type { TranslationSession } from '@/lib/translation-session'
 import type { SelectionAnchor, SelectionThread } from '../../../shared/paper-harness'
-import type { Passage } from './PdfReader'
 
 const renderSource = ({ str, itemIndex }: { str: string; itemIndex: number }) => sourceMarkup(str, itemIndex)
 
-export default function PdfPageSpread({ fast, session, selection, selectionPinned, onAnchor, threads, onSaveThread, onRemoveThread, store, spreadWidth, paperId, page, width, renderWidth, translation, onTranslationWidth, onTranslationDragging, onTranslationReset, defaultAspect, parallel, root, provider, model, onReady, onSelect, onExpand, onCollapse }: {
+export default function PdfPageSpread({ fast, session, selection, selectionPinned, onAnchor, threads, onSaveThread, onRemoveThread, store, spreadWidth, paperId, page, width, renderWidth, translation, onTranslationWidth, onTranslationDragging, onTranslationReset, defaultAspect, parallel, root, provider, model, onExpand, onCollapse }: {
   fast: boolean; session: PaperSession; store: TranslationSession; spreadWidth: number; selection: SelectionAnchor | null; selectionPinned: boolean
   onAnchor: (anchor: SelectionAnchor | null, pinned: boolean, expectedId?: string) => void; threads: SelectionThread[]; onSaveThread: (thread: SelectionThread) => Promise<void>; onRemoveThread: (id: string) => Promise<void>
   paperId: string; page: number; width: number; renderWidth: number; defaultAspect: number; parallel: boolean
   translation: { translation: number; min: number; max: number }
   onTranslationWidth: (width: number) => void; onTranslationDragging: (active: boolean) => void; onTranslationReset: () => void
   root: RefObject<HTMLDivElement | null>; provider: string; model: string
-  onReady: (context: PageContext) => void; onSelect: (passage: Passage) => void
   onExpand: () => void; onCollapse: () => void
 }) {
   const [near, setNear] = useState(false)
@@ -35,7 +33,7 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useSyncExternalStore(store.subscribe, store.snapshot)
   const opened = parallel && store.visible.has(page)
-  useEffect(() => { let current = true; if (near || opened) void session.page(page).then((next) => { if (current) { setContext(next); onReady(next) } }).catch((cause) => { if (current) setError(cause.message) }); return () => { current = false } }, [session, page, near, opened, onReady])
+  useEffect(() => { let current = true; if (near || opened) void session.page(page).then((next) => { if (current) setContext(next) }).catch((cause) => { if (current) setError(cause.message) }); return () => { current = false } }, [session, page, near, opened])
   useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current) }, [])
   const height = Math.floor(width * (aspect ?? defaultAspect))
 
@@ -79,7 +77,7 @@ export default function PdfPageSpread({ fast, session, selection, selectionPinne
   function select() {
     if (!source.current) return
     const anchor = selectedAnchor(source.current, page)
-    if (anchor) { hold(); onAnchor(anchor, true); onSelect({ text: anchor.text, page }) }
+    if (anchor) { hold(); onAnchor(anchor, true); }
     else if (selection) closeSelection()
   }
   function hover(event: React.MouseEvent<HTMLDivElement>) {

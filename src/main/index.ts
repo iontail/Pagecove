@@ -51,7 +51,10 @@ function createWindow() {
       backgroundThrottling: !process.env.PAPERGLIM_BACKGROUND
     }
   })
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url).catch(() => dialog.showErrorBox('링크를 열 수 없어', '기본 브라우저 설정을 확인해 줘.'))
+    return { action: 'deny' }
+  })
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.webContents.once('did-finish-load', () => {
     if (pendingFiles.length) void openFiles(pendingFiles.splice(0))

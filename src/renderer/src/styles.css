@@ -194,8 +194,6 @@ svg { stroke-width: 1.5; }
 .composer-actions { display: flex; align-items: center; gap: 5px; margin-top: 12px; }
 .composer-actions > button:first-child { font-size: 11px; color: #cecece; padding-left: 0; }
 .connect-helper { display: block; margin: 10px auto 0; font-size: 11px; color: #9a9aa4; }
-.passage-card { border-left: 1px solid #bdbdbd; padding: 8px 12px; margin-bottom: 12px; background: #e7e7e70d; color: #cecece; font-size: 10px; }
-.passage-card p { max-height: 88px; overflow: auto; font-size: 12px; line-height: 1.8; margin: 8px 0 0; color: #cecece; white-space: pre-wrap; }
 .chat-messages { display: flex; flex-direction: column; gap: 24px; }
 .chat-message strong { font-size: 11px; font-weight: 450; color: #cecece; }
 .chat-message p { font-size: 13px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; color: #efefef; margin-top: 8px; }

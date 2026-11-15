@@ -9,20 +9,17 @@ import { TranslationSession } from '@/lib/translation-session'
 import type { PaperSession } from '@/lib/paper-session'
 import type { SelectionAnchor, SelectionThread } from '../../../shared/paper-harness'
 import type { Paper } from '../../../shared/types'
-import type { PageContext } from '../../../shared/reading'
 import { translationLayout } from '../../../shared/panels'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import 'react-pdf/dist/Page/TextLayer.css'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
-export type Passage = { text: string; page: number }
 
-export default function PdfReader({ fast, session, threads, onSaveThread, onRemoveThread, resizing, onHome, paper, onOpen, onPage, onSelect, onContext, translationOpen, onTranslationChange, provider, model }: {
+export default function PdfReader({ fast, session, threads, onSaveThread, onRemoveThread, resizing, onHome, paper, onOpen, onPage, translationOpen, onTranslationChange, provider, model }: {
   fast: boolean;
   session: PaperSession | null; threads: SelectionThread[]; onSaveThread: (thread: SelectionThread) => Promise<void>; onRemoveThread: (id: string) => Promise<void>
   resizing: boolean; onHome: () => void; paper: Paper | null; onOpen: () => void; onPage: (id: string, page: number) => void
-  onSelect: (passage: Passage) => void; onContext: (context: PageContext | null) => void
   translationOpen: boolean; onTranslationChange: (open: boolean) => void; provider: string; model: string
 }) {
   const [bytes, setBytes] = useState<Uint8Array | null>(null)
@@ -33,7 +30,6 @@ export default function PdfReader({ fast, session, threads, onSaveThread, onRemo
   const [zoom, setZoom] = useState(1)
   const [width, setWidth] = useState(640)
   const [aspect, setAspect] = useState(1.414)
-  const [contexts, setContexts] = useState<Record<number, PageContext>>({})
   const [selection, setSelection] = useState<SelectionAnchor | null>(null)
   const [selectionPinned, setSelectionPinned] = useState(false)
   const selectionState = useRef({ anchor: selection, pinned: selectionPinned })
@@ -64,7 +60,7 @@ export default function PdfReader({ fast, session, threads, onSaveThread, onRemo
   useEffect(() => {
     let current = true
     const start = paper?.page ?? 1
-    setSelection(null); setSelectionPinned(false); setBytes(null); setError(''); setPageCount(0); setContexts({}); setPage(start); setZoom(1)
+    setSelection(null); setSelectionPinned(false); setBytes(null); setError(''); setPageCount(0); setPage(start); setZoom(1)
     anchor.current = { page: start, ratio: 0 }
     if (paper) window.paperglim.readPdf(paper.id).then((data) => { if (current) setBytes(data) }, (cause) => { session?.fail(cause); if (current) setError(String(cause.message).replace(/^Error invoking remote method '[^']+': Error: /, '')) })
     return () => { current = false; cancelAnimationFrame(frame.current) }
@@ -89,9 +85,6 @@ export default function PdfReader({ fast, session, threads, onSaveThread, onRemo
     setPageInput(String(page))
     if (paper && pageCount) onPage(paper.id, page)
   }, [page, pageCount, paper?.id, onPage])
-
-  useEffect(() => { onContext(contexts[page] ?? null) }, [page, contexts, onContext])
-  const ready = useCallback((context: PageContext) => { if (context.paperId === activePaper.current) setContexts((current) => ({ ...current, [context.page]: context })) }, [])
 
   function trackPage() {
     cancelAnimationFrame(frame.current)
@@ -136,7 +129,7 @@ export default function PdfReader({ fast, session, threads, onSaveThread, onRemo
         onLoadSuccess={async (pdf) => { try { session?.attach(pdf, pdfjs.OPS); const first = await pdf.getPage(1); if (activePaper.current !== paper.id) return; const viewport = first.getViewport({ scale: 1 }); setAspect(viewport.height / viewport.width); setPageCount(pdf.numPages); setPage((current) => Math.min(current, pdf.numPages)) } catch (cause) { if (activePaper.current === paper.id) setError(cause instanceof Error ? cause.message : 'PDF를 읽을 수 없어.') } }}
         onSourceError={(cause) => { session?.fail(cause); setError(cause.message) }} onLoadError={(cause) => { session?.fail(cause); setError(`PDF를 읽을 수 없어. 암호나 파일 손상 여부를 확인해 줘. (${cause.message})`) }}
         loading={<div className="pdf-loading"><Loader2 className="animate-spin" />PDF를 불러오는 중</div>}>
-        {session && translationStore && <div className={`pages-stack ${translationOpen ? 'parallel-pages' : ''}`}>{Array.from({ length: pageCount }, (_, index) => <PdfPageSpread fast={fast} key={`${paper.id}:${index + 1}`} session={session} selection={selection?.page === index + 1 ? selection : null} selectionPinned={selectionPinned} onAnchor={changeAnchor} threads={threads.filter((thread) => thread.page === index + 1)} onSaveThread={onSaveThread} onRemoveThread={onRemoveThread} store={translationStore} paperId={paper.id} page={index + 1} width={pageWidth} spreadWidth={translationOpen ? spreadWidth : pageWidth} renderWidth={renderWidth.current} translation={translation} onTranslationWidth={(value) => setTranslationShare(value / spreadWidth)} onTranslationDragging={setTranslationDragging} onTranslationReset={() => setTranslationShare(1 / 3)} defaultAspect={aspect} parallel={translationOpen} root={scrollArea} provider={provider} model={model} onReady={ready} onSelect={onSelect} onExpand={() => onTranslationChange(true)} onCollapse={() => { if (!translationStore.visible.size) onTranslationChange(false) }} />)}</div>}
+        {session && translationStore && <div className={`pages-stack ${translationOpen ? 'parallel-pages' : ''}`}>{Array.from({ length: pageCount }, (_, index) => <PdfPageSpread fast={fast} key={`${paper.id}:${index + 1}`} session={session} selection={selection?.page === index + 1 ? selection : null} selectionPinned={selectionPinned} onAnchor={changeAnchor} threads={threads.filter((thread) => thread.page === index + 1)} onSaveThread={onSaveThread} onRemoveThread={onRemoveThread} store={translationStore} paperId={paper.id} page={index + 1} width={pageWidth} spreadWidth={translationOpen ? spreadWidth : pageWidth} renderWidth={renderWidth.current} translation={translation} onTranslationWidth={(value) => setTranslationShare(value / spreadWidth)} onTranslationDragging={setTranslationDragging} onTranslationReset={() => setTranslationShare(1 / 3)} defaultAspect={aspect} parallel={translationOpen} root={scrollArea} provider={provider} model={model} onExpand={() => onTranslationChange(true)} onCollapse={() => { if (!translationStore.visible.size) onTranslationChange(false) }} />)}</div>}
       </Document> : <div className="pdf-loading"><Loader2 className="animate-spin" />PDF를 불러오는 중</div>}
     </div>
     <div className="reader-status"><span>{translationStore?.all.total ? `전체 번역 ${translationStore.all.completed} / ${translationStore.all.total}${translationStore.all.failed ? ` · 확인 필요 ${translationStore.all.failed}페이지` : ''}` : paper ? '연속 스크롤' : 'PDF · Zotero'}</span><span className="ml-auto">{pageCount ? `${page} / ${pageCount}` : 'PaperGlim'}</span></div>

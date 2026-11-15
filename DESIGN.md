@@ -8,7 +8,7 @@ A black desktop workspace with neutral controls. Only the translation uses pale 
 
 ## Foundations
 
-The app identity is a custom geometric PG monogram in soft white on a graphite tile. No books, ribbons, folded pages or sparkles. The header uses the same letter outlines without the tile. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 16–128px.
+The app identity is a split frame with two opposed, rounded forms, offset slightly across diagonal openings. Use soft white on a graphite tile. Keep the 180-degree relationship, optical stroke weight and open gaps; no initials, books, ribbons or sparkles. The header uses the same silhouette without the tile. `resources/icon.svg` is the master; `npm run icons` generates ICNS, PNG and matching app/site marks. Preserve recognition at 16–128px.
 
 - Shell `#141415`, sidebar `#111112`, reading ground `#181819`.
 - Main text `#e8e8eb`, secondary text `#a0a0a5`, separators `#2e2e32`.
@@ -25,6 +25,8 @@ Each translation starts with only a maple `한글번역` tab at the upper right 
 The back control beside the document title returns to the PDF drop screen. It retains files and reading positions. Use explicit loading, empty, error, disabled and focus states. Respect reduced motion.
 
 PDF text stays transparent during native selection, preserving the single canvas-rendered glyph layer. The selection toolbar is 340px wide and the expanded explanation prefers 440px, bounded by the reader. Hide the popup when its anchor scrolls out. When enough space exists above or below, cap the answer height there so the selected sentence remains visible. Outside pointer input clears the tool. Long answers scroll inside the popup.
+
+PDF text selection never attaches a quotation or changes the request scope in sidebar chat. Keep sidebar questions grounded in the whole paper; selection-specific questions stay in the inline discussion. Preserve a sidebar draft when selecting or dismissing text. Disable the composer until a document is open. Cmd+Enter submits except while IME composition is active. Distinguish chat and summary progress, and open explicit HTTP(S) answer links in the default browser.
 
 Chat suggestions send immediately. Show the current question and the beginning of its answer when a response arrives. Markdown uses short headings, clear paragraph spacing and shallow lists. Local KaTeX handles inline and display math; long expressions and tables scroll within their own bounds. Keep equations distinct without colored cards or decorative separators.
 
