@@ -4,7 +4,7 @@ import { planTranslation } from '../../../shared/translation-harness.ts'
 import { textBlocks } from '../../../shared/reading.ts'
 import type { PageContext } from '../../../shared/reading.ts'
 import { paperText } from '../../../shared/paper-harness.ts'
-import type { PaperContext } from '../../../shared/paper-harness.ts'
+import type { PaperContext, SelectionAnchor } from '../../../shared/paper-harness.ts'
 
 export class PaperSession {
   private pdf?: PDFDocumentProxy
@@ -30,6 +30,18 @@ export class PaperSession {
   }
   fail(error: Error) { this.reject(error) }
   get pageCount() { return this.pdf?.numPages ?? 0 }
+  async image(anchor: SelectionAnchor) {
+    const rect = anchor.rects[0], pdf = await this.ready, page = await pdf.getPage(anchor.page)
+    const base = page.getViewport({ scale: 1 })
+    const scale = Math.min(3, 2000 / Math.max(base.width * rect.width, base.height * rect.height))
+    const viewport = page.getViewport({ scale }), canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(viewport.width * rect.width))
+    canvas.height = Math.max(1, Math.round(viewport.height * rect.height))
+    try {
+      await page.render({ canvas, viewport, transform: [1, 0, 0, 1, -viewport.width * rect.x, -viewport.height * rect.y] }).promise
+      return canvas.toDataURL('image/png')
+    } finally { canvas.width = 0; canvas.height = 0 }
+  }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.status
   private update(status: string) { this.status = status; this.listeners.forEach((listener) => listener()) }

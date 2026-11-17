@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowUp, Check, ChevronDown, Copy, FileText, MessageSquare, PanelRightClose, Plus, Square, Zap } from 'lucide-react'
+import { ArrowUp, Check, ChevronDown, Copy, Download, FileText, MessageSquare, PanelRightClose, Plus, Square, Zap } from 'lucide-react'
 import { AIRequest } from '@/lib/ai-request'
 import ModelPicker from './ModelPicker'
 import ProviderLogo from './ProviderLogo'
 import AnswerText from './AnswerText'
+import RecoveryNotice from './RecoveryNotice'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { paperPrompt, summaryPrompt, parseSummary, readingQuestions } from '../../../shared/paper-harness'
@@ -19,6 +20,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
   const [draft, setDraft] = useState('')
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [retryTask, setRetryTask] = useState<'chat' | 'summary' | null>(null)
   const [notice, setNotice] = useState('')
   const [stopping, setStopping] = useState(false)
   const pending = useRef<AIRequest | null>(null)
@@ -38,6 +40,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
   const active = useRef(requestKey)
   active.current = requestKey
   const sending = useRef(false)
+  const retryIntent = useRef<AnswerIntent>('chat')
   const generation = useRef(0)
   const body = useRef<HTMLDivElement>(null)
   const status = useSyncExternalStore(session?.subscribe ?? (() => () => {}), session?.snapshot ?? (() => 'PDF를 먼저 열어줘'))
@@ -55,16 +58,20 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
     let current = true
     setProviders([])
     window.paperglim.getProviders().then((entries) => { if (current) setProviders(entries) }).catch(() => { if (current) setProviders([{ id: provider === 'claude' ? 'claude' : 'codex', name: provider, installed: false, version: null }]) })
-    return () => { current = false }
+    const refresh = () => { void window.paperglim.getProviders().then((entries) => { if (current) setProviders(entries) }).catch(() => {}) }
+    window.addEventListener('paperglim:refresh-providers', refresh)
+    return () => { current = false; window.removeEventListener('paperglim:refresh-providers', refresh) }
   }, [provider])
   async function stop() {
     setStopping(true)
     try { await pending.current?.cancel() }
-    catch { setError('중지 요청을 보내지 못했어. 다시 눌러줘.') }
+    catch { setRetryTask(null); setError('중지 요청을 보내지 못했어. 다시 눌러줘.') }
     finally { setStopping(false); draftInput.current?.focus() }
   }
   async function send(question = draft.trim(), intent: AnswerIntent = 'chat') {
     if (!question || busy || sending.current || !session || installed !== true) return
+    retryIntent.current = intent
+    setRetryTask('chat')
     sending.current = true
     const request = ++generation.current
     const operation = new AIRequest(provider, model, fast)
@@ -82,6 +89,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
   async function summarize() {
     setTab('summary')
     if (summary || busy || sending.current || !session) return
+    setRetryTask('summary')
     sending.current = true
     const request = ++generation.current
     const operation = new AIRequest(provider, model, fast)
@@ -97,7 +105,12 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
   }
   async function copyPrompt() {
     try { await window.paperglim.copyText(draft); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    catch { setError('복사하지 못했어. 다시 시도해 줘.') }
+    catch { setRetryTask(null); setError('복사하지 못했어. 다시 시도해 줘.') }
+  }
+  async function exportText(text: string, kind: '답변' | '요약') {
+    if (!paperId) return
+    try { if (await window.paperglim.exportMarkdown(paperId, text, kind)) setNotice('Markdown 파일로 내보냈어.') }
+    catch { setRetryTask(null); setError('내보내지 못했어. 저장 위치와 권한을 확인해 줘.') }
   }
   const summaryText = summary ? [
     '### 3문장 요약',
@@ -113,7 +126,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
     <div className="assistant-tabs"><button aria-pressed={tab === 'chat'} onClick={() => setTab('chat')}><MessageSquare size={14} />대화</button><button aria-pressed={tab === 'summary'} disabled={!session || installed !== true} onClick={() => void summarize()}><FileText size={14} />논문 요약</button><Button variant="ghost" size="icon-sm" aria-label="새 대화" title="새 대화 · 논문 컨텍스트 유지" disabled={!!busy} onClick={() => { setMessages([]); setDraft(''); setError(''); setNotice(''); setTab('chat') }}><Plus /></Button></div>
     <p className="paper-context-status" role="status">{status}</p>
     <div className="assistant-body" ref={body}>
-      {tab === 'summary' ? <div className="paper-summary">{summary ? <><AnswerText text={summaryText} /><Button variant="outline" size="sm" disabled={!!busy} onClick={() => { setSummary(null); setTab('chat') }}>요약 지우기</Button></> : <p>{busy === 'summary' ? '논문 전체를 바탕으로 요약하는 중…' : busy === 'chat' ? '답변을 만들고 있어. 완료되면 논문 요약을 다시 눌러줘.' : '논문 요약 버튼을 눌러 다시 요청해 줘.'}</p>}</div> : messages.length ? <div className="chat-messages">{messages.map((message, index) => <div key={index} className={`chat-message ${message.role}`}><strong>{message.role === 'user' ? '나' : provider === 'codex' ? 'Codex' : 'Claude Code'}{message.role === 'assistant' && <button className="answer-copy" aria-label="답변 복사" title="답변 복사" onClick={() => void window.paperglim.copyText(message.text).catch(() => setError('답변을 복사하지 못했어.'))}><Copy size={12} /></button>}</strong><AnswerText text={message.text} citations={message.role === 'assistant'} /></div>)}{busy && <p role="status">{busy === 'summary' ? '논문 전체를 바탕으로 요약하는 중…' : '논문 전체를 참고해 답변하는 중…'}</p>}</div> : <><div className="assistant-intro"><h3>논문에 질문하기</h3><p>본문 전체를 참고해서 답해.<br />문장을 선택하면 PDF 위에서 설명을 볼 수 있어.</p></div><div className="question-suggestions">{readingQuestions.map(({ id, label }) => <button key={id} disabled={!session || installed !== true || !!busy} onClick={() => void send(label, id)}>{label}</button>)}</div></>}
+      {tab === 'summary' ? <div className="paper-summary">{summary ? <><AnswerText text={summaryText} /><Button variant="outline" size="sm" onClick={() => void exportText(summaryText, '요약')}><Download data-icon="inline-start" />요약 내보내기</Button><Button variant="outline" size="sm" disabled={!!busy} onClick={() => { setSummary(null); setTab('chat') }}>요약 지우기</Button></> : <p>{busy === 'summary' ? '논문 전체를 바탕으로 요약하는 중…' : busy === 'chat' ? '답변을 만들고 있어. 완료되면 논문 요약을 다시 눌러줘.' : '논문 요약 버튼을 눌러 다시 요청해 줘.'}</p>}</div> : messages.length ? <div className="chat-messages">{messages.map((message, index) => <div key={index} className={`chat-message ${message.role}`}><strong>{message.role === 'user' ? '나' : provider === 'codex' ? 'Codex' : 'Claude Code'}{message.role === 'assistant' && <button className="answer-copy" aria-label="답변 복사" title="답변 복사" onClick={() => void window.paperglim.copyText(message.text).catch(() => { setRetryTask(null); setError('답변을 복사하지 못했어.') })}><Copy size={12} /></button>}{message.role === 'assistant' && <button className="answer-copy" aria-label="답변 Markdown 내보내기" title="답변 내보내기" onClick={() => void exportText(`## 질문\n\n${messages[index - 1]?.text ?? ''}\n\n## 답변\n\n${message.text}`, '답변')}><Download size={12} /></button>}</strong><AnswerText text={message.text} citations={message.role === 'assistant'} /></div>)}{busy && <p role="status">{busy === 'summary' ? '논문 전체를 바탕으로 요약하는 중…' : '논문 전체를 참고해 답변하는 중…'}</p>}</div> : <><div className="assistant-intro"><h3>논문에 질문하기</h3><p>본문 전체를 참고해서 답해.<br />문장을 선택하면 PDF 위에서 설명을 볼 수 있어.</p></div><div className="question-suggestions">{readingQuestions.map(({ id, label }) => <button key={id} disabled={!session || installed !== true || !!busy} onClick={() => void send(label, id)}>{label}</button>)}</div></>}
     </div>
     <div className="composer-area">
       <div className="question-composer"><Textarea ref={draftInput} disabled={!session} aria-label="논문에 대한 질문" placeholder={session ? '논문 전체에 대해 질문해…' : 'PDF를 먼저 열어줘'} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void send() } }} /><div className="composer-actions">
@@ -125,7 +138,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
       {fast && supportsFast && <p className="model-note">Fast 사용 중 · 구독 한도를 더 소모해</p>}
       {provider === 'claude' && <p className="model-note">Fast는 구독 외 크레딧 과금이 필요해서 꺼뒀어.</p>}
       {notice && <p className="model-note" role="status">{notice}</p>}
-      {error && <p className="text-destructive text-xs" role="alert">{error}</p>}
+      <RecoveryNotice error={error} disabled={!!busy} onRetry={retryTask && (retryTask === 'summary' || draft.trim()) ? () => { if (retryTask === 'summary') void summarize(); else void send(draft.trim(), retryIntent.current) } : undefined} />
       <p className="chat-context-note">대화는 임시로 유지돼 · 새 대화로 분리</p>
       <button className="connect-helper" onClick={onSettings}>내 AI 연결 상태 확인하기</button>
     </div>

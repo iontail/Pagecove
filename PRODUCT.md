@@ -10,6 +10,7 @@ Read academic PDFs with page-local Korean translation and optional AI questions 
 
 ## Workflows and constraints
 
+- Provide a replayable in-app usage guide through the titlebar and native Help menu. Introduce opening a paper, translation, learning tools and connection/data management with real icons and direct links to the example or settings. Keep first use unblocked and remember that the guide was opened locally.
 - Open or drop local PDFs, or register local PDFs from Zotero while retaining collection membership.
 - Scroll through pages continuously. Keep translation paragraphs beside their source page and map translated sentences to exact source text ranges.
 - Provide a first-page translate-all action and sentence-level recovery instead of hiding an entire page on one validation failure.
@@ -19,6 +20,9 @@ Read academic PDFs with page-local Korean translation and optional AI questions 
 - Preserve important English terminology. Exclude chart interiors from translation where the heuristic can identify them.
 - Each CLI invocation is ephemeral. Include only the current thread history, never other threads. Keep sidebar chat and drafts temporary; persist requested selection explanations locally for later hover recall. Share the full-paper extraction and long-paper evidence context across questions, summaries and explanations.
 - Search full PDF text locally with Cmd+F and jump to exact source ranges. Open saved selection discussions from a document-level list.
+- Offer concept/formula and figure/table learning tasks with validated JSON output and app-owned section headings. Distinguish source evidence, background knowledge, illustrative examples and uncertainty. Ground figure answers in an explicitly selected image plus the exact-page text and shared whole-paper context.
+- Allow pointer or keyboard image cropping and whole-page selection. Send image inputs through the user's existing CLI; keep only geometry and discussion locally, and delete temporary CLI image files on completion or cancellation.
+- Save explicit revisit marks without an AI request, filter them in the saved-discussion shelf and retain them with annotations across restart and backup/restore. Keep sidebar chat temporary.
 - Cancel individual AI operations by terminating their owned CLI process groups, preserve question drafts, and keep concurrent operations isolated.
 - Persist completed translations locally by paper and content SHA-256, restoring them across model changes and app restarts while keeping sidebar chat temporary. Allow per-page cache deletion.
 - Keep original PDFs unchanged. Retain the library and reading position when returning to the start screen.

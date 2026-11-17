@@ -1,21 +1,24 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
 import type { Paper, ZoteroCatalog, ZoteroCollection, ZoteroPaper } from '../shared/types'
 
-type StoredPaper = Paper & { path: string }
+export type StoredPaper = Paper & { path: string; fingerprint?: string }
 const MAX_PDF_BYTES = 150 * 1024 * 1024
 
 export class PaperLibrary {
   private papers: StoredPaper[] = []
   private pendingWrite = Promise.resolve()
   private collections: ZoteroCollection[] = []
+  private removed: StoredPaper | null = null
 
   private directory: string
+  private examplePath?: string
 
-  constructor(directory: string) { this.directory = directory }
+  constructor(directory: string, examplePath?: string) { this.directory = directory; this.examplePath = examplePath }
 
   async load() {
+    this.removed = null
     await mkdir(this.directory, { recursive: true })
     try {
       const content = JSON.parse(await readFile(join(this.directory, 'library.json'), 'utf8'))
@@ -35,9 +38,11 @@ export class PaperLibrary {
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
   }
 
+  async flush() { await this.pendingWrite }
+
   list(): Paper[] {
     return this.papers.toSorted((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt))
-      .map(({ path: _path, ...paper }) => paper)
+      .map(({ path: _path, fingerprint: _fingerprint, ...paper }) => paper)
   }
 
   getCollections() { return this.collections }
@@ -88,22 +93,27 @@ export class PaperLibrary {
         this.papers.push(paper)
       }
       if (zotero) { paper.name = zotero.title; paper.source = 'zotero'; paper.zoteroKey = zotero.key; paper.collectionKeys = zotero.collections }
-      const { path: _path, ...publicPaper } = paper
+      const { path: _path, fingerprint: _fingerprint, ...publicPaper } = paper
       return publicPaper
   }
 
-  async read(id: string) {
+  async read(id: string): Promise<Uint8Array> {
     const paper = this.papers.find((entry) => entry.id === id)
     if (!paper) throw new Error('목록에 없는 PDF야. 파일 열기로 다시 추가해 줘.')
     try {
       await validatePdf(paper.path)
       const bytes = await readFile(paper.path)
+      paper.fingerprint = createHash('sha256').update(bytes).digest('hex')
       paper.lastOpenedAt = new Date().toISOString()
       await this.save()
       return new Uint8Array(bytes)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new Error('원본 PDF가 이동되었거나 삭제됐어. 파일 열기로 다시 추가해 줘.')
+        if (this.examplePath && paper.path !== this.examplePath && paper.path.endsWith('/PaperGlim.app/Contents/Resources/app.asar/resources/ResNet.pdf')) {
+          await this.relink(id, this.examplePath, true)
+          return this.read(id)
+        }
+        throw new Error('원본 PDF가 이동되었거나 삭제됐어. 파일 위치를 다시 지정해 줘.')
       }
       throw error
     }
@@ -117,8 +127,34 @@ export class PaperLibrary {
   }
 
   async remove(id: string) {
+    this.removed = this.papers.find((paper) => paper.id === id) ?? null
     this.papers = this.papers.filter((paper) => paper.id !== id)
     await this.save()
+  }
+
+  async undoRemove() {
+    const paper = this.removed
+    if (!paper) throw new Error('되돌릴 목록 제거가 없어.')
+    if (this.papers.some((entry) => entry.id === paper.id || entry.path === paper.path || (paper.zoteroKey && entry.zoteroKey === paper.zoteroKey))) throw new Error('이미 다시 등록된 논문이야.')
+    this.papers.push(paper)
+    await this.save()
+    this.removed = null
+    return this.list().find((entry) => entry.id === paper.id)!
+  }
+
+  async relink(id: string, path: string, allowUnverified = false) {
+    const paper = this.papers.find((entry) => entry.id === id)
+    if (!paper) throw new Error('목록에 없는 PDF야.')
+    path = resolve(path)
+    await validatePdf(path)
+    if (this.papers.some((entry) => entry.id !== id && entry.path === path)) throw new Error('이미 다른 항목에 연결된 파일이야.')
+    const fingerprint = createHash('sha256').update(await readFile(path)).digest('hex')
+    if (paper.fingerprint && fingerprint !== paper.fingerprint) throw new Error('원래 PDF와 내용이 달라. 같은 파일을 선택해 줘. 다른 PDF는 새로 추가해 줘.')
+    if (!paper.fingerprint && !allowUnverified) throw Object.assign(new Error('기존 PDF의 내용 일치 여부를 확인할 수 없어.'), { code: 'UNVERIFIED_PDF' })
+    paper.path = path
+    paper.fingerprint = fingerprint
+    await this.save()
+    return this.list().find((entry) => entry.id === id)!
   }
 
   private save() {

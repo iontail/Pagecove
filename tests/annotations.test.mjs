@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AnnotationStore } from '../src/main/annotations.ts'
+import { AnnotationStore, validateAnnotation } from '../src/main/annotations.ts'
 
 test('selection discussions persist with exact anchors, survive concurrent saves and can be removed', async () => {
   const root = await mkdtemp(join(tmpdir(), 'paperglim-notes-'))
@@ -18,5 +18,18 @@ test('selection discussions persist with exact anchors, survive concurrent saves
     await store.put('paper', null, 'n1')
     assert.equal((await store.get('paper'))[0].id, 'n2')
     assert.deepEqual(await store.get('different-paper'), [])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('review-only marks and figure discussions persist without changing legacy text anchors', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'paperglim-review-'))
+  try {
+    const store = new AnnotationStore(root)
+    const note = { id: 'figure:1', page: 1, text: '선택한 그림·표', kind: 'figure', ranges: [], rects: [{ x: .2, y: .3, width: .4, height: .2 }], messages: [], review: true, updatedAt: new Date().toISOString() }
+    await store.put('paper', note)
+    assert.deepEqual(await new AnnotationStore(root).get('paper'), [note])
+    for (const bad of [{ kind: 'text' }, { kind: undefined }, { review: 'yes' }, { study: 'unknown' }, { messages: [null] }]) assert.throws(() => validateAnnotation({ ...note, ...bad }))
+    await store.put('paper', { ...note, review: false, messages: [{ role: 'assistant', text: '해설' }] })
+    assert.equal((await store.get('paper'))[0].review, false)
   } finally { await rm(root, { recursive: true, force: true }) }
 })

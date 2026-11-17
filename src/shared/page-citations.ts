@@ -30,13 +30,16 @@ export default function pageCitations() {
         if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end)
         else merged.push([start, end])
       }
-      const label = merged.map(([start, end]) => start === end ? String(start) : `${start}–${end}`).join(', ')
       const tail = children.at(-1)
       if (tail?.type === 'text') tail.value = tail.value.trimEnd()
       node.children = children
       const excerpt = children.flatMap((child) => child.type === 'text' ? [child.value] : 'children' in child ? child.children.filter((part) => part.type === 'text').map((part) => part.value) : []).join('').trim()
       const preview = Array.from(excerpt).slice(0, 64).join('')
-      sources.push({ type: 'paragraph', children: [{ type: 'text', value: `${preview}${excerpt.length > 64 ? '…' : ''} · p. ${label}` }] })
+      const links: PhrasingContent[] = merged.flatMap(([start, end], index) => [
+        ...(index ? [{ type: 'text' as const, value: ', ' }] : []),
+        { type: 'link' as const, url: `#paperglim-page-${start}-${end}`, children: [{ type: 'text' as const, value: start === end ? `p. ${start}` : `p. ${start}–${end}` }] }
+      ])
+      sources.push({ type: 'paragraph', children: [{ type: 'text', value: `${preview}${excerpt.length > 64 ? '…' : ''} · ` }, ...links] })
     })
     if (sources.length) {
       const details: Blockquote = { type: 'blockquote', data: { hName: 'details', hProperties: { className: ['answer-sources'] } }, children: [

@@ -5,6 +5,7 @@ import { readFile, mkdir } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 
 const root = resolve('website')
+const { version } = JSON.parse(await readFile('package.json', 'utf8'))
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' }
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, 'http://localhost').pathname
@@ -33,6 +34,7 @@ try {
     const downloads = await page.locator('a[href$=".dmg"]').evaluateAll((links) => links.map((link) => link.href))
     assert.equal(downloads.length, 1, 'Offer one Apple Silicon download')
     assert.ok(downloads[0].endsWith('-mac-arm64.dmg'))
+    assert.ok(downloads[0].endsWith(`/v${version}/PaperGlim-${version}-mac-arm64.dmg`), 'Download must match the current app release')
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name}: horizontal overflow`)
     const anchors = await page.locator('a[href^="#"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute('href'), exists: !!document.querySelector(link.getAttribute('href')) })))
     assert.ok(anchors.every((anchor) => anchor.exists), `${name}: broken section link`)
@@ -45,6 +47,11 @@ try {
     await page.screenshot({ path: `artifacts/site-${name}.png`, fullPage: true })
   }
   await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.locator('#start-guide summary').click()
+  assert.equal(await page.locator('#start-guide .guide-shot').isVisible(), true)
+  await page.locator('#start-guide').screenshot({ path: 'artifacts/site-usage-open.png' })
+  await page.locator('#start-guide a[href="#ai-setup"]').click()
+  assert.equal(await page.locator('#ai-setup').getAttribute('open'), '')
   await page.locator('.install-note').click()
   assert.equal(await page.locator('#first-open').getAttribute('open'), '')
   await page.locator('#first-open summary').click()
@@ -56,5 +63,5 @@ try {
   assert.equal(await page.locator('#zotero-setup').getAttribute('open'), '', 'Direct guide links survive reload')
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto')
   assert.deepEqual(failures, [])
-  console.log('Site passed: 1440/820/390/320px, images, section links, setup guide opening/reopening/deep links, keyboard FAQ, reduced motion and no page errors')
+  console.log('Site passed: 1440/820/390/320px, current download, real app images, usage guide links, setup opening/reopening/deep links, keyboard FAQ, reduced motion and no page errors')
 } finally { await browser.close(); await new Promise((done) => server.close(done)) }

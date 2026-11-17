@@ -1,7 +1,28 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
+import { appScales } from '../shared/appearance'
 import type { DesktopBridge, Paper } from '../shared/types'
 
 const bridge: DesktopBridge = {
+  createBackup: (preferences, translations) => ipcRenderer.invoke('backup:create', preferences, translations),
+  prepareRestore: (preferences) => ipcRenderer.invoke('backup:prepare', preferences),
+  applyRestore: (token, preferences, settings) => ipcRenderer.invoke('backup:restore', token, preferences, settings),
+  discardRestore: () => ipcRenderer.invoke('backup:discard'),
+  restoredPreferences: () => ipcRenderer.invoke('backup:preferences'),
+  getAppInfo: () => ipcRenderer.invoke('app:info'),
+  checkUpdate: () => ipcRenderer.invoke('app:update'),
+  openReleases: () => ipcRenderer.invoke('app:releases'),
+  relinkPaper: (id) => ipcRenderer.invoke('papers:relink', id),
+  undoRemovePaper: () => ipcRenderer.invoke('papers:undo-remove'),
+  exportMarkdown: (id, text, kind) => ipcRenderer.invoke('papers:export', id, text, kind),
+  onCommand: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: Parameters<typeof callback>[0]) => callback(command)
+    ipcRenderer.on('app:command', listener)
+    return () => ipcRenderer.removeListener('app:command', listener)
+  },
+  setAppScale: (scale) => {
+    if (!appScales.includes(scale)) throw new Error('지원하지 않는 앱 화면 크기야.')
+    webFrame.setZoomFactor(scale)
+  },
   getTranslations: (id, fingerprint) => ipcRenderer.invoke('translations:get', id, fingerprint),
   saveTranslations: (id, cache) => ipcRenderer.invoke('translations:put', id, cache),
   getAnnotations: (id) => ipcRenderer.invoke('notes:get', id),
@@ -21,7 +42,7 @@ const bridge: DesktopBridge = {
   removePaper: (id) => ipcRenderer.invoke('papers:remove', id),
   getProviders: () => ipcRenderer.invoke('providers:list'),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
-  askAI: (provider, prompt, model, fast = false, requestId) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId),
+  askAI: (provider, prompt, model, fast = false, requestId, image) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId, image),
   cancelAI: (requestId) => ipcRenderer.invoke('ai:cancel', requestId),
   onOpenPaper: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, papers: Paper[]) => callback(papers)

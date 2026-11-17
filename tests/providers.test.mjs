@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, writeFile, rm, access } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { askProvider, codexModels, getProviders } from '../src/main/providers.ts'
+import { askProvider, codexModels, getProviders, imageBytes } from '../src/main/providers.ts'
 
 test('provider uses cached account models, isolates working files, and reports unsupported models', async () => {
   const root = await mkdtemp(join(tmpdir(), 'paperglim-provider-test-'))
@@ -49,6 +49,34 @@ test('provider uses cached account models, isolates working files, and reports u
     if (previousHome === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previousHome
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('image requests pass real PNG bytes through isolated Codex files or Claude content blocks and clean up', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'paperglim-image-provider-'))
+  const oldPath = process.env.PATH
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB1sAAAAASUVORK5CYII='
+  try {
+    process.env.PATH = root
+    await writeFile(join(root, 'codex'), `#!${process.execPath}
+const fs=require('node:fs');let prompt='';process.stdin.on('data',c=>prompt+=c);process.stdin.on('end',()=>{const args=process.argv.slice(2),path=args[args.indexOf('--image')+1];console.log(JSON.stringify({prompt,args,path,png:fs.readFileSync(path).toString('base64'),mode:fs.statSync(path).mode&511}))});`, { mode: 0o700 })
+    await writeFile(join(root, 'claude'), `#!${process.execPath}
+let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{console.log(JSON.stringify({type:'system',message:'private session metadata'}));console.log(JSON.stringify({type:'result',subtype:'success',result:JSON.stringify({input:JSON.parse(input),args:process.argv.slice(2)})}))});`, { mode: 0o700 })
+    const result = JSON.parse(await askProvider('codex', 'public figure question', 'test', false, undefined, png))
+    assert.equal(result.png, png.split(',')[1])
+    assert.equal(result.mode, 0o600)
+    assert.equal(result.prompt, 'public figure question')
+    assert.ok(result.args.includes('--ephemeral'))
+    await assert.rejects(() => access(result.path))
+    const claude = JSON.parse(await askProvider('claude', 'public figure question', 'sonnet', false, undefined, png))
+    assert.equal(claude.input.message.content[0].text, 'public figure question')
+    assert.equal(claude.input.message.content[1].source.data, png.split(',')[1])
+    assert.equal(claude.input.message.content[1].source.media_type, 'image/png')
+    assert.ok(claude.args.includes('--no-session-persistence') && claude.args.includes('stream-json'))
+    assert.equal(imageBytes(png).readUInt32BE(16), 1)
+    for (const bad of ['file:///private/key', 'data:image/jpeg;base64,YQ==', 'data:image/png;base64,YQ==', 'x'.repeat(6000001), 42]) await assert.rejects(() => askProvider('codex', 'test', 'test', false, undefined, bad), /이미지/)
+    const invalid = Buffer.from(png.split(',')[1], 'base64'); invalid.writeUInt32BE(9000, 16)
+    assert.throws(() => imageBytes('data:image/png;base64,' + invalid.toString('base64')), /크기/)
+  } finally { if (oldPath === undefined) delete process.env.PATH; else process.env.PATH = oldPath; await rm(root, { recursive: true, force: true }) }
 })
 
 test('cancelling a provider kills its actual CLI process group and removes its temporary directory', async () => {

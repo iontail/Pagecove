@@ -3,8 +3,8 @@ import type { PageContext } from './reading'
 export type ChatMessage = { role: 'user' | 'assistant'; text: string }
 export type PaperContext = { paperId: string; pages: PageContext[] }
 export type PaperSummary = { sentences: string[]; overview: string; sections: { question: string; method: string; results: string; limitations: string } }
-export type SelectionAnchor = { id: string; page: number; text: string; ranges: { itemIndex: number; start: number; end: number }[]; rects: { x: number; y: number; width: number; height: number }[] }
-export type SelectionThread = SelectionAnchor & { messages: ChatMessage[]; updatedAt: string }
+export type SelectionAnchor = { id: string; page: number; text: string; kind?: 'figure'; ranges: { itemIndex: number; start: number; end: number }[]; rects: { x: number; y: number; width: number; height: number }[] }
+export type SelectionThread = SelectionAnchor & { messages: ChatMessage[]; updatedAt: string; review?: boolean; study?: 'concept' }
 export type AnswerIntent = 'chat' | 'contributions' | 'method' | 'results' | 'selection' | 'summary'
 
 export const readingQuestions = [

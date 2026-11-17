@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 export class AIRequests {
   private active = new Map<string, AbortController>()
+  get running() { return this.active.size > 0 }
   async run<T>(owner: number, id: string | undefined, task: (signal: AbortSignal) => Promise<T>) {
     id ??= randomUUID()
     if (typeof id !== 'string' || !/^[\w-]{1,100}$/.test(id)) throw new Error('AI 요청 ID가 올바르지 않아.')

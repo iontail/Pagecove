@@ -1,5 +1,6 @@
+import { requestError } from '../shared/failures.ts'
 import { execFile, spawn } from 'node:child_process'
-import { access, readFile, mkdtemp, rm } from 'node:fs/promises'
+import { access, readFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -16,7 +17,15 @@ export async function codexModels(): Promise<AIModel[]> {
   } catch { return [] }
 }
 
-export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false, signal?: AbortSignal): Promise<string> {
+export function imageBytes(image: string) {
+  if (typeof image !== 'string' || image.length > 6000000 || !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(image)) throw new Error('선택 이미지를 읽지 못했어. 그림·표 영역을 다시 선택해 줘.')
+  const bytes = Buffer.from(image.slice('data:image/png;base64,'.length), 'base64')
+  if (bytes.length < 33 || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || bytes.toString('ascii', 12, 16) !== 'IHDR' || !bytes.readUInt32BE(16) || !bytes.readUInt32BE(20) || bytes.readUInt32BE(16) > 4096 || bytes.readUInt32BE(20) > 4096) throw new Error('선택 이미지의 크기나 형식을 확인해 줘.')
+  return bytes
+}
+
+export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false, signal?: AbortSignal, image?: string): Promise<string> {
+  const png = image === undefined ? null : imageBytes(image)
   if (typeof fast !== 'boolean') throw new Error('Fast 모드 설정을 확인해 줘.')
   if (id === 'claude' && fast) throw new Error('Claude Fast는 구독 외 크레딧 과금이 필요해. 이 앱에서는 Standard로 사용해 줘.')
   if (!['codex', 'claude'].includes(id) || typeof prompt !== 'string' || !prompt.trim() || prompt.length > 100000) throw new Error('AI 요청을 확인해 줘.')
@@ -33,7 +42,10 @@ export async function askProvider(id: 'codex' | 'claude', prompt: string, model?
   const args = id === 'codex' ? ['exec', '--config', `service_tier="${fast ? 'fast' : 'default'}"`, ...(fast ? ['--enable', 'fast_mode'] : []), '--ephemeral', '--disable', 'memories', '--skip-git-repo-check', '--sandbox', 'read-only', ...(selectedModel ? ['--model', selectedModel] : []), '-'] : ['--print', '--no-session-persistence', '--tools', '', '--settings', '{"fastMode":false}', ...(model ? ['--model', model] : [])]
   if (signal?.aborted) throw new Error('AI 요청을 중지했어.')
   const directory = await mkdtemp(join(tmpdir(), 'paperglim-ai-'))
-  try { return await new Promise<string>((resolve, reject) => {
+  try {
+    if (png && id === 'codex') { const file = join(directory, 'selection.png'); await writeFile(file, png, { mode: 0o600 }); args.splice(args.length - 1, 0, '--image', file) }
+    if (png && id === 'claude') args.push('--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose')
+    return await new Promise<string>((resolve, reject) => {
     if (signal?.aborted) { reject(new Error('AI 요청을 중지했어.')); return }
     const child = spawn(executable, args, { detached: true, cwd: directory, env: { ...process.env, ELECTRON_RUN_AS_NODE: '', ...(id === 'claude' ? { CLAUDE_CODE_DISABLE_FAST_MODE: '1' } : {}) }, stdio: ['pipe', 'pipe', 'pipe'] })
     let output = ''
@@ -54,13 +66,23 @@ export async function askProvider(id: 'codex' | 'claude', prompt: string, model?
       signal?.removeEventListener('abort', stop)
       if (signal?.aborted) reject(new Error('AI 요청을 중지했어.'))
       else if (timedOut) reject(new Error('AI 요청 시간이 초과됐어. 다시 시도해 줘.'))
-      else if (code === 0 && output.trim()) resolve(output.trim())
+      else if (code === 0 && output.trim()) {
+        if (png && id === 'claude') {
+          try {
+            const result = output.trim().split('\n').filter((line) => line.trim()).map((line) => JSON.parse(line)).findLast((entry) => entry.type === 'result')
+            if (result?.is_error) reject(requestError(Array.isArray(result.errors) ? result.errors.filter((entry: unknown) => typeof entry === 'string').join('\n') : 'AI 응답을 받지 못했어.'))
+            else if (!result || typeof result.result !== 'string' || !result.result.trim()) reject(new Error('그림·표 응답을 받지 못했어. 이미지 입력을 지원하는 모델과 최신 CLI인지 확인해 줘.'))
+            else resolve(result.result.trim())
+          } catch { reject(new Error('그림·표 응답을 읽지 못했어. Claude Code CLI를 업데이트하고 다시 시도해 줘.')) }
+        } else resolve(output.trim())
+      }
+      else if (/image.*(?:not supported|unsupported)|(?:not support|unsupported).*image|input.format|unexpected argument.*--image/i.test(errors)) reject(new Error('현재 CLI나 모델이 이미지 입력을 지원하지 않아. CLI를 업데이트하거나 이미지 입력을 지원하는 모델을 골라줘.'))
       else if (fast && /service.?tier|fast.?mode/i.test(errors)) reject(new Error('Fast 요청이 거부됐어. 계정의 지원 여부·한도를 확인하거나 Fast를 끄고 다시 보내줘.'))
       else if (errors.includes('not supported when using Codex') || errors.includes('model_not_found')) reject(new Error('현재 계정에서 지원하지 않는 Codex 모델이야. 연결 설정에서 다른 모델을 선택해 줘.'))
-      else reject(new Error(errors.slice(-1500) || 'AI 응답을 받지 못했어. 로그인 상태를 확인해 줘.'))
+      else reject(requestError(errors || 'AI 응답을 받지 못했어.'))
     })
     child.stdin.on('error', () => {})
-    child.stdin.end(prompt)
+    child.stdin.end(png && id === 'claude' ? `${JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: png.toString('base64') } }] }, parent_tool_use_id: null })}\n` : prompt)
   }) } finally { await rm(directory, { recursive: true, force: true }) }
 }
 

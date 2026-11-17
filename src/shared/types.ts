@@ -1,5 +1,6 @@
 import type { TranslationCache } from './translation-cache'
 import type { SelectionThread } from './paper-harness'
+import type { RestoreSummary } from './backup'
 export type Paper = {
   id: string
   name: string
@@ -17,6 +18,9 @@ export type ZoteroCatalog = { papers: ZoteroPaper[]; collections: ZoteroCollecti
 export type ZoteroSyncResult = { catalog: ZoteroCatalog; available: number; unavailable: number }
 
 export type AIModel = { id: string; name: string; supportsFast?: boolean }
+export type AppCommand = 'settings' | 'guide' | 'zoomIn' | 'zoomOut' | 'resetZoom' | 'find' | 'back' | 'forward' | 'outline' | 'toggleAssistant'
+export type AppInfo = { version: string; build: string; packaged: boolean }
+export type AppUpdate = { version: string; available: boolean; ahead: boolean; url: string; notes: string }
 
 export type ProviderStatus = {
   id: 'codex' | 'claude'
@@ -29,6 +33,19 @@ export type ProviderStatus = {
 }
 
 export type DesktopBridge = {
+  createBackup: (preferences: Record<string, string>, translations: boolean) => Promise<boolean>
+  prepareRestore: (preferences: Record<string, string>) => Promise<RestoreSummary | null>
+  applyRestore: (token: string, preferences: Record<string, string>, settings: boolean) => Promise<void>
+  discardRestore: () => Promise<void>
+  restoredPreferences: () => Promise<{ revision: string; preferences: Record<string, string> } | null>
+  setAppScale: (scale: number) => void
+  getAppInfo: () => Promise<AppInfo>
+  checkUpdate: () => Promise<AppUpdate>
+  openReleases: () => Promise<void>
+  onCommand: (callback: (command: AppCommand) => void) => () => void
+  relinkPaper: (id: string) => Promise<Paper | null>
+  undoRemovePaper: () => Promise<Paper>
+  exportMarkdown: (id: string, text: string, kind: '답변' | '요약' | '선택 영역 설명') => Promise<boolean>
   getTranslations: (id: string, fingerprint: string) => Promise<TranslationCache | null>
   saveTranslations: (id: string, cache: TranslationCache) => Promise<void>
   getAnnotations: (id: string) => Promise<SelectionThread[]>
@@ -48,7 +65,7 @@ export type DesktopBridge = {
   removePaper: (id: string) => Promise<void>
   getProviders: () => Promise<ProviderStatus[]>
   copyText: (text: string) => Promise<void>
-  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string) => Promise<string>
+  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string, image?: string) => Promise<string>
   cancelAI: (requestId: string) => Promise<void>
   onOpenPaper: (callback: (papers: Paper[]) => void) => () => void
 }

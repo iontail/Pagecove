@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { RefObject } from 'react'
 import { Page } from 'react-pdf'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ScanLine } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import FigureSelection from './FigureSelection'
 import TranslationPanel from './TranslationPanel'
 import PanelResizer from './PanelResizer'
 import { sourceMarkup } from '../../../shared/reading'
@@ -29,6 +31,7 @@ export default function PdfPageSpread({ fast, session, searchLocation, selection
   const [context, setContext] = useState<PageContext | null>(null)
   const [location, setLocation] = useState<SourceLocation | null>(null)
   const [error, setError] = useState('')
+  const [figureSelecting, setFigureSelecting] = useState(false)
   const row = useRef<HTMLElement>(null)
   const source = useRef<HTMLDivElement>(null)
   const locatedSearch = useRef(0)
@@ -83,13 +86,13 @@ export default function PdfPageSpread({ fast, session, searchLocation, selection
   function leave() { if (selection && !selectionPinned) { hold(); hoverTimer.current = setTimeout(() => onAnchor(null, false, selection.id), 250) } }
   function closeSelection() { hold(); onAnchor(null, false); window.getSelection()?.removeAllRanges() }
   function select() {
-    if (!source.current) return
+    if (!source.current || figureSelecting) return
     const anchor = selectedAnchor(source.current, page)
     if (anchor) { hold(); onAnchor(anchor, true); }
-    else if (selection) closeSelection()
+    else if (selection && selection.kind !== 'figure') closeSelection()
   }
   function hover(event: React.MouseEvent<HTMLDivElement>) {
-    if (selectionPinned || event.buttons || !source.current) return
+    if (figureSelecting || selectionPinned || event.buttons || !source.current) return
     const box = source.current.getBoundingClientRect(), x = (event.clientX - box.left) / box.width, y = (event.clientY - box.top) / box.height
     const thread = threads.find((thread) => thread.rects.some((rect) => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height))
     if (thread) { hold(); if (thread.id !== selection?.id) onAnchor(thread, false) }
@@ -100,6 +103,7 @@ export default function PdfPageSpread({ fast, session, searchLocation, selection
   return <article ref={row} className="reading-spread" style={{ width: spreadWidth }} data-reading-page={page} aria-label={`${page}페이지 읽기`}>
     <span className="page-edge-label">{page}</span>
     <div className="page-translation-actions" style={{ width }}>
+      <Button className="figure-select-launch" variant="ghost" size="icon-sm" aria-label={`${page}페이지 그림·표 질문`} title="그림·표 영역을 선택해 질문" aria-pressed={figureSelecting} disabled={!near || !context} onClick={() => { closeSelection(); setFigureSelecting((value) => !value) }}><ScanLine /></Button>
       {!opened && <button className="translation-launch" disabled={!context || store.loading} onClick={translatePage}>한글번역</button>}
       {page === 1 && <button className="translation-launch translate-all" disabled={!context || store.loading || store.all.running} onClick={() => { onExpand(); void store.translateAll() }}>모두 번역</button>}
     </div>
@@ -113,7 +117,9 @@ export default function PdfPageSpread({ fast, session, searchLocation, selection
         onRenderTextLayerSuccess={highlight}
         loading={<div className="page-placeholder"><Loader2 className="animate-spin" /></div>}
         onLoadError={(cause) => setError(cause.message)} onRenderError={(cause) => setError(cause.message)} /></div> : <div className="page-placeholder" />}
-      <div className="annotation-layer" aria-hidden="true">{threads.map((thread) => thread.rects.map((rect, index) => <span key={`${thread.id}:${index}`} className="annotation-mark" data-annotation-id={thread.id} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} />))}</div>
+      <div className="annotation-layer" aria-hidden="true">{threads.map((thread) => thread.rects.map((rect, index) => <span key={`${thread.id}:${index}`} className={`annotation-mark ${thread.review ? 'annotation-review' : ''} ${thread.kind === 'figure' ? 'annotation-figure' : ''}`} data-annotation-id={thread.id} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} />))}</div>
+      {selection?.kind === 'figure' && !threads.some((thread) => thread.id === selection.id) && <div className="annotation-layer" aria-hidden="true">{selection.rects.map((rect, index) => <span key={index} className="annotation-mark annotation-figure" style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} />)}</div>}
+      {figureSelecting && <FigureSelection page={page} onCancel={() => setFigureSelecting(false)} onSelect={(anchor) => { hold(); setFigureSelecting(false); onAnchor(anchor, true) }} />}
     </div>
     {opened && <aside id={`translation-${page}`} className="translation-page-wrap" style={{ width: translation.translation, height }} aria-label={`${page}페이지 번역 영역`}>
       <PanelResizer side="translation" controls={`translation-${page}`} width={translation.translation} min={translation.min} max={translation.max} onChange={onTranslationWidth} onDragging={onTranslationDragging} onReset={onTranslationReset} />

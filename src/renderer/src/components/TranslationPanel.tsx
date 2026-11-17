@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import RecoveryNotice from './RecoveryNotice'
 import { Copy, Square, Trash2, Languages, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { PageContext, SourceLocation } from '../../../shared/reading'
@@ -29,7 +30,8 @@ export default function TranslationPanel({ context, page, store, open, onLocate,
     <div className="translation-page-body" ref={body}>
       {context?.translation && <details className="translation-scope"><summary>번역 범위 · 영어 용어 유지</summary><p>본문 {context.translation.blocks.length}개 · 도표·여백 {context.translation.excluded.length - included.length}개 제외. 핵심 전문 용어는 영어로 유지해.</p>{context.translation.partial && <p role="status">도표 영역 분석이 일부 생략됐어. 제외 항목과 원문을 확인해 줘.</p>}<div>{context.translation.excluded.map(({ block, reason }) => <label key={block.id}><input type="checkbox" aria-label={`${block.id} 번역에 포함`} checked={included.includes(block.id)} disabled={busy} onChange={(event) => setIncluded(event.target.checked ? [...included, block.id] : included.filter((id) => id !== block.id))} /><span><small>{reason}</small>{block.text}</span><button aria-label={`${block.id} 제외 원문 위치 보기`} onClick={() => onLocate({ paperId: context.paperId, page, itemIndexes: block.itemIndexes, token: Date.now() })}>위치</button></label>)}</div></details>}
       {busy && <p className="translation-pending" role="status"><Loader2 className="animate-spin" />{state.status === 'queued' ? '번역 순서를 기다리는 중…' : '이 페이지를 번역하고 있어…'}</p>}
-      {(state?.error || copyError || store.storageError) && <p className="zotero-error" role="alert">{state?.error || copyError || store.storageError}{store.storageError && !!translations.length && <button className="translation-save-retry" onClick={() => void store.save()}>저장 다시 시도</button>}</p>}
+      {state?.error && <RecoveryNotice error={state.error} disabled={busy} onRetry={() => { if (context) void store.translate(context, included, true) }} />}
+      {(copyError || store.storageError) && <p className="zotero-error" role="alert">{copyError || store.storageError}{store.storageError && !!translations.length && <button className="translation-save-retry" onClick={() => void store.save()}>저장 다시 시도</button>}</p>}
       {(notice || state?.status === 'cancelled') && <p className="translation-notice" role="status">{notice || '번역을 중지했어. 다시 번역을 누르면 이어서 요청할 수 있어.'}</p>}
       {!!warnings && <p className="translation-notice" role="status">확인이 필요한 {warnings}문장은 원문을 유지했어. 나머지 번역은 아래에서 읽을 수 있어.</p>}
       {!busy && !translations.length && !notice && state?.status !== 'cancelled' && <p className="translation-empty">{!hasText ? '선택 가능한 본문이 없어. 번역 범위에서 필요한 텍스트를 포함해 줘. 스캔 PDF의 OCR은 아직 지원하지 않아.' : '번역 범위를 바꿨다면 다시 번역을 눌러줘.'}</p>}

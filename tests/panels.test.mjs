@@ -25,6 +25,15 @@ test('AI panel can grow past the previous cap and yields library space at the wi
   assert.equal(panelLayout({ library: 260, assistant: 900 }, 2560, true).assistant, 900)
 })
 
+test('enlarged UI keeps PDF and chat usable by temporarily hiding the library', () => {
+  for (const viewport of [1040 / 1.5, 1040 / 1.25, 1420 / 1.5]) {
+    const panels = panelLayout(defaultPanels, viewport, true)
+    assert.ok(viewport - panels.library - panels.assistant - (panels.library ? 12 : 6) >= 420)
+    assert.equal(panels.library === 0, viewport < 900)
+    assert.ok(panelLayout(defaultPanels, viewport, false).library >= 208)
+  }
+})
+
 test('translation starts at half the original width and can expand without overflowing at small zoom', () => {
   const initial = translationLayout(1200, 1 / 3)
   assert.equal(initial.source, initial.translation * 2)
