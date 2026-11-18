@@ -110,7 +110,7 @@ export default function AssistantPanel({ fast, onFast, onModel, onProvider, pape
     setCompleted(false); setBusy('summary'); setError('')
     try {
       const reference = await operation.reference(session)
-      const value = parseSummary(await operation.ask(summaryPrompt(reference)))
+      const value = parseSummary(await operation.ask(summaryPrompt(reference), undefined, 'summary'))
       if (active.current === requestKey && generation.current === request) { setSummary(value); setCompleted(true) }
     } catch (cause) { if (active.current === requestKey && generation.current === request) { if (operation.cancelled) setNotice('요약을 중지했어요.'); else setError(cause instanceof Error ? cause.message : '논문을 요약하지 못했어요. 다시 시도해 주세요.') } }
     finally { if (pending.current === operation) pending.current = null; if (generation.current === request) { sending.current = false; setBusy(null) } }

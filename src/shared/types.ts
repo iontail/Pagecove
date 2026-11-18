@@ -81,7 +81,7 @@ export type DesktopBridge = {
   onUsageChanged: (callback: () => void) => () => void
   getProviders: () => Promise<ProviderStatus[]>
   copyText: (text: string) => Promise<void>
-  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string, image?: string) => Promise<string>
+  askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string, image?: string, task?: 'summary') => Promise<string>
   cancelAI: (requestId: string) => Promise<void>
   onOpenPaper: (callback: (papers: Paper[]) => void) => () => void
 }

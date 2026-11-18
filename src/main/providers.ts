@@ -34,7 +34,7 @@ export function imageBytes(image: string) {
   return bytes
 }
 
-export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false, signal?: AbortSignal, image?: string): Promise<string> {
+export async function askProvider(id: 'codex' | 'claude', prompt: string, model?: string, fast = false, signal?: AbortSignal, image?: string, task?: 'summary'): Promise<string> {
   const png = image === undefined ? null : imageBytes(image)
   if (typeof fast !== 'boolean') throw new Error('Fast 모드 설정을 확인해 주세요.')
   if (id === 'claude' && fast) throw new Error('Claude Fast는 구독 외 크레딧이 필요해요. 이 앱에서는 Standard를 사용해 주세요.')
@@ -62,7 +62,8 @@ export async function askProvider(id: 'codex' | 'claude', prompt: string, model?
     }
     signal?.addEventListener('abort', stop, { once: true })
     if (signal?.aborted) stop()
-    const timer = setTimeout(() => { timedOut = true; stop() }, 180000)
+    const timeout = task === 'summary' ? 300000 : 180000
+    const timer = setTimeout(() => { timedOut = true; stop() }, timeout)
     child.stdout.on('data', (chunk) => { output += chunk.toString() })
     child.stderr.on('data', (chunk) => { errors = (errors + chunk.toString()).slice(-10000) })
     child.on('error', (error) => { clearTimeout(timer); signal?.removeEventListener('abort', stop); reject(error) })

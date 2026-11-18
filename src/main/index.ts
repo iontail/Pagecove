@@ -274,7 +274,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('papers:remove', (_event, id: string) => withData(() => library.remove(id)))
   ipcMain.handle('providers:usage', (_event, force) => getProviderUsage(force === true))
   ipcMain.handle('providers:list', () => getProviders())
-  ipcMain.handle('ai:ask', (event, provider, prompt, model, fast, requestId?: string, image?: string) => { if (maintaining) throw new Error('자료를 복원하고 있어요. 복원이 끝나면 다시 요청해 주세요.'); return aiRequests.run(event.sender.id, requestId, (signal) => askProvider(provider, prompt, model, fast, signal, image)).finally(() => { if (!event.sender.isDestroyed()) event.sender.send('providers:usage-changed') }) })
+  ipcMain.handle('ai:ask', (event, provider, prompt, model, fast, requestId?: string, image?: string, task?: 'summary') => { if (maintaining) throw new Error('자료를 복원하고 있어요. 복원이 끝나면 다시 요청해 주세요.'); return aiRequests.run(event.sender.id, requestId, (signal) => askProvider(provider, prompt, model, fast, signal, image, task)).finally(() => { if (!event.sender.isDestroyed()) event.sender.send('providers:usage-changed') }) })
   ipcMain.handle('ai:cancel', (event, requestId: string) => aiRequests.cancel(event.sender.id, requestId))
   ipcMain.handle('clipboard:write', (_event, text: string) => {
     if (typeof text !== 'string') throw new Error('복사할 텍스트를 선택해 주세요.')

@@ -55,7 +55,7 @@ try {
   await page.locator('.saved-discussion-row').click()
   let inline = page.getByRole('dialog', { name: '선택 영역 설명', exact: true })
   await inline.getByRole('button', { name: '다시 보기 해제', exact: true }).click()
-  await inline.getByText('이 부분의 설명을 요청하거나 다시 볼 부분으로 표시해.', { exact: true }).waitFor()
+  await inline.getByText('이 부분의 설명을 요청하거나 ‘다시 보기’에 추가하세요.', { exact: true }).waitFor()
   assert.equal((await notes()).length, 0)
   assert.equal((await calls()).length, 0)
   await capture('review-unmarked')

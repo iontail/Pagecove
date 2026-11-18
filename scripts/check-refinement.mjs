@@ -121,7 +121,7 @@ try {
   assert.equal(await page.locator('.paper-summary hr').count(),1)
   await capture('summary')
   await page.getByRole('heading',{name:'핵심 수식과 변수',exact:true}).scrollIntoViewIfNeeded(); await capture('summary-equations')
-  await page.getByRole('heading',{name:'Insight · 의미와 해석',exact:true}).scrollIntoViewIfNeeded(); await capture('summary-insights')
+  await page.getByRole('heading',{name:'결과의 의미',exact:true}).scrollIntoViewIfNeeded(); await capture('summary-insights')
   await page.getByRole('button',{name:'대화',exact:true}).click()
   await page.getByRole('textbox',{name:'논문에 대한 질문'}).fill('중지 동작 확인')
   await page.getByRole('button',{name:'AI에 보내기'}).click(); await pending()

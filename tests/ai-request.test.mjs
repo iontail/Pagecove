@@ -1,6 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { AIRequest } from '../src/renderer/src/lib/ai-request.ts'
+
+test('only a summary request marks the operation for a longer response window', async () => {
+  const tasks = []
+  globalThis.window = { paperglim: { askAI: async (_provider, _prompt, _model, _fast, _id, _image, task) => { tasks.push(task); return 'answer' } } }
+  const request = new AIRequest('codex', 'model')
+  await request.ask('Question')
+  await request.ask('Summarize', undefined, 'summary')
+  assert.deepEqual(tasks, [undefined, 'summary'])
+})
 import { PaperSession } from '../src/renderer/src/lib/paper-session.ts'
 import { OPS } from 'pdfjs-dist/legacy/build/pdf.mjs'
 

@@ -61,7 +61,7 @@ const bridge: DesktopBridge = {
   },
   getProviders: () => ipcRenderer.invoke('providers:list'),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
-  askAI: (provider, prompt, model, fast = false, requestId, image) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId, image),
+  askAI: (provider, prompt, model, fast = false, requestId, image, task) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId, image, task),
   cancelAI: (requestId) => ipcRenderer.invoke('ai:cancel', requestId),
   onOpenPaper: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, papers: Paper[]) => callback(papers)
