@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { OPS } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { PaperSession } from '../src/renderer/src/lib/paper-session.ts'
-import { paperPrompt, parseSummary, summaryPrompt } from '../src/shared/paper-harness.ts'
+import { paperPrompt, parseSummary, summaryPrompt, summaryMarkdown } from '../src/shared/paper-harness.ts'
 import { protectedSentence, parseTranslation } from '../src/shared/reading.ts'
 import { TranslationSession } from '../src/renderer/src/lib/translation-session.ts'
 
@@ -33,7 +33,7 @@ test('large paper context is condensed once per model and never silently truncat
   const { pdf, reads } = fakePdf(3, 'Long source. '.repeat(2300))
   const session = new PaperSession('long', OPS); session.attach(pdf, OPS)
   let calls = 0
-  const ask = async () => { calls++; return 'Evidence [p. 1] [p. 2] [p. 3].' }
+  const ask = async (prompt) => { calls++; assert.match(prompt, /baseline/); return 'Evidence [p. 1] [p. 2] [p. 3].' }
   const reference = await session.reference('model', ask)
   assert.match(reference, /전체 3페이지/)
   assert.ok(calls >= 3)
@@ -44,8 +44,15 @@ test('large paper context is condensed once per model and never silently truncat
 })
 
 test('summary enforces three sentences and all overview sections', () => {
-  const valid = { sentences: ['One.', 'Two.', 'Three.'], overview: 'Overview [p. 2]', sections: { question: 'Q', method: 'M', results: 'R', limitations: 'L' } }
+  const valid = { sentences: ['One.', 'Two.', 'Three.'], overview: 'Overview [p. 2]', sections: { question: 'Q', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]', method: 'M', equations: '수식 없음', insights: '결과의 의미', results: 'R', limitations: 'L' } }
   assert.deepEqual(parseSummary(JSON.stringify(valid)), valid)
+  const markdown = summaryMarkdown(valid)
+  assert.match(markdown, /1\. One\.[\s\S]*3\. Three\.[\s\S]*---[\s\S]*Motivation[\s\S]*핵심 수식과 변수[\s\S]*Insight/)
+  assert.throws(() => parseSummary(JSON.stringify({ ...valid, sections: { ...valid.sections, baselines: '' } })))
+  assert.throws(() => parseSummary(JSON.stringify({ ...valid, sections: { ...valid.sections, baselines: undefined } })))
+  assert.match(markdown, /주요 baseline·기반 연구/)
+  assert.throws(() => parseSummary(JSON.stringify({ ...valid, sections: { ...valid.sections, equations: '' } })))
+  assert.throws(() => parseSummary(JSON.stringify({ ...valid, sections: { ...valid.sections, insights: undefined } })))
   assert.throws(() => parseSummary(JSON.stringify({ ...valid, sentences: ['Only one.'] })))
   assert.throws(() => parseSummary(JSON.stringify({ ...valid, sections: {} })))
 })
@@ -84,4 +91,19 @@ test('all-page translation queues requests, reuses cached pages and does not pub
   stopped.stop(); release(); await all
   assert.equal(stopped.all.completed, 0)
   assert.equal(stopped.visible.has(2), false)
+})
+
+
+test('summary separates actual experiment baselines from background citations without invented bibliography', () => {
+  const prompt = summaryPrompt('[p. 1] This paper compares a plain network and cites a related method.')
+  assert.match(prompt, /실험 비교 baseline/)
+  assert.match(prompt, /기반·관련 연구/)
+  assert.match(prompt, /plain network/)
+  assert.match(prompt, /논문명이나 링크·DOI를 추측해서 만들지 말고/)
+  assert.match(prompt, /직접 읽고 검증한 사실처럼 단정하지 마/)
+  assert.match(prompt, /"baselines":"\.\.\."/)
+  const explanation = paperPrompt('[p. 1] Equation', '이 원리는 왜 동작해?', [], { page: 1, text: 'Equation' })
+  assert.match(explanation, /3000~5000/)
+  assert.match(explanation, /후속 질문도 복잡하면/)
+  assert.match(explanation, /연산·기호·직관/)
 })

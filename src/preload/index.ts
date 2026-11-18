@@ -9,6 +9,18 @@ const bridge: DesktopBridge = {
   discardRestore: () => ipcRenderer.invoke('backup:discard'),
   restoredPreferences: () => ipcRenderer.invoke('backup:preferences'),
   getAppInfo: () => ipcRenderer.invoke('app:info'),
+  getUpdateState: () => ipcRenderer.invoke('app:update-state'),
+  checkAppUpdate: () => ipcRenderer.invoke('app:update-check'),
+  downloadUpdate: () => ipcRenderer.invoke('app:update-download'),
+  installUpdate: () => ipcRenderer.invoke('app:update-install'),
+  cancelUpdate: () => ipcRenderer.invoke('app:update-cancel'),
+  acknowledgeUpdateLock: (revision, blocked) => ipcRenderer.send('app:update-locked', revision, blocked),
+  setUpdateBlocked: (blocked) => ipcRenderer.send('app:update-blocked', blocked),
+  onAppUpdate: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: Parameters<typeof callback>[0]) => callback(state)
+    ipcRenderer.on('app:update-state', listener)
+    return () => ipcRenderer.removeListener('app:update-state', listener)
+  },
   checkUpdate: () => ipcRenderer.invoke('app:update'),
   openReleases: () => ipcRenderer.invoke('app:releases'),
   relinkPaper: (id) => ipcRenderer.invoke('papers:relink', id),
@@ -37,9 +49,16 @@ const bridge: DesktopBridge = {
   importZotero: (key) => ipcRenderer.invoke('zotero:import', key),
   openZoteroHelp: () => ipcRenderer.invoke('zotero:help'),
   dropPdfs: (files) => ipcRenderer.invoke('papers:drop', files.map((file) => webUtils.getPathForFile(file)).filter(Boolean)),
+  previewPdf: (id) => ipcRenderer.invoke('papers:preview', id),
   readPdf: (id) => ipcRenderer.invoke('papers:read', id),
   updatePage: (id, page) => ipcRenderer.invoke('papers:page', id, page),
   removePaper: (id) => ipcRenderer.invoke('papers:remove', id),
+  getProviderUsage: (force = false) => ipcRenderer.invoke('providers:usage', force),
+  onUsageChanged: (callback) => {
+    const listener = () => callback()
+    ipcRenderer.on('providers:usage-changed', listener)
+    return () => ipcRenderer.removeListener('providers:usage-changed', listener)
+  },
   getProviders: () => ipcRenderer.invoke('providers:list'),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
   askAI: (provider, prompt, model, fast = false, requestId, image) => ipcRenderer.invoke('ai:ask', provider, prompt, model, fast, requestId, image),

@@ -14,6 +14,9 @@ test('study tasks enforce distinct evidence rules, bounded output, exact page co
   assert.match(concept, /JSON 객체만/)
   assert.match(concept, /압축되지 않은 식과 기호/)
   assert.match(concept, /이전 질문/)
+  assert.match(concept, /3000~5000/)
+  assert.match(concept, /후속 질문이라도 새로 묻는 원리·유도 과정은 충분히/)
+  assert.doesNotMatch(concept, /1800~2600|최대 4개의 얕은 목록/)
   const figure = studyPrompt('논문 본문', '그림 설명', [], { ...anchor, kind: 'figure' }, 'figure', '캡션')
   assert.match(figure, /첨부된 선택 이미지 범위만 직접 볼 수 있어/)
   assert.doesNotMatch(figure, /추출된 텍스트만 있으므로 그림 자체를 보았다고 말하지 마/)
@@ -31,7 +34,7 @@ test('study answers use app-owned headings, retain math and citations, omit irre
   assert.ok(markdown.includes('$$\ny=F(x)+x\n$$'))
   assert.doesNotMatch(markdown, /작은 예시/)
   assert.match(studyMarkdown('```json\n' + JSON.stringify(value) + '\n```', 'figure'), /축·범례·비교 조건/)
-  for (const bad of ['주절주절', 'null', '[]', JSON.stringify({ ...value, limits: '' }), JSON.stringify({ ...value, overview: 3 }), JSON.stringify({ ...value, reasoning: null })]) assert.throws(() => studyMarkdown(bad, 'concept'), /형식|누락/)
+  for (const bad of ['주절주절', 'null', '[]', JSON.stringify({ ...value, limits: '' }), JSON.stringify({ ...value, overview: 3 }), JSON.stringify({ ...value, reasoning: null })]) assert.throws(() => studyMarkdown(bad, 'concept'), /읽을 수 없어요|누락/)
 })
 
 test('image rectangles support reverse drags and clip selection to the PDF page', () => {

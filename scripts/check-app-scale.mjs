@@ -12,7 +12,7 @@ await mkdir('artifacts/app-scale', { recursive: true })
 const errors = []
 let app, page
 async function launch() {
-  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
   page = await app.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
   await page.locator('.brand').waitFor()
@@ -71,7 +71,7 @@ try {
         await page.waitForFunction(() => document.querySelector('.zoom-label')?.textContent === '100%')
         assert.ok(Math.abs(await factor() - 1.25) < .001, 'PDF reset must keep app scale')
       }
-      await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+      if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
       await checkLayout(`${width}px at ${percent}% with chat`)
       assert.equal(await page.locator('#library-pane').isVisible(), await page.evaluate(() => innerWidth >= 900))
       if (percent === 150) await capture(`reading-${width}-150`)

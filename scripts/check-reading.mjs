@@ -49,7 +49,7 @@ try {
         if (globalThis.badTranslation) answer[0].text += ' 123456789'
         return JSON.stringify(answer)
       }
-      if (prompt.includes('형식: {"sentences"')) return JSON.stringify({ sentences: ['핵심 기여다 [p. 1].', '방법을 설명한다 [p. 3].', '결과가 있다 [p. 12].'], overview: '전체 논문의 흐름 [p. 1] [p. 12]', sections: { question: '문제 [p. 1]', method: '방법 [p. 3]', results: '결과 [p. 12]', limitations: '한계 [p. 12]' } })
+      if (prompt.includes('형식: {"sentences"')) return JSON.stringify({ sentences: ['핵심 기여다 [p. 1].', '방법을 설명한다 [p. 3].', '결과가 있다 [p. 12].'], overview: '전체 논문의 흐름 [p. 1] [p. 12]', sections: { question: '문제 [p. 1]', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]', method: '방법 [p. 3]', equations: '수식 없음', insights: '결과의 의미', results: '결과 [p. 12]', limitations: '한계 [p. 12]' } })
       if (!prompt.includes('[p. 12]')) throw Error('Whole-paper context missing')
       globalThis.chatCalls = (globalThis.chatCalls ?? 0) + 1
       return `**전체 논문 근거 응답 ${globalThis.chatCalls}** [p. 12]`
@@ -117,7 +117,7 @@ try {
   assert.equal(await popup.locator('.selection-message.assistant').count(), 2)
   await window.keyboard.press('Escape')
 
-  await window.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await window.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await window.getByRole('button', { name: 'AI 패널 열기' }).click()
   const question = window.getByRole('textbox', { name: '논문에 대한 질문' })
   await question.fill('FIRST_PANEL_SENTINEL')
   await window.getByRole('button', { name: 'AI에 보내기' }).click()
@@ -174,7 +174,7 @@ try {
   await window.keyboard.press('Escape')
   assert.equal(await window.locator('.translation-page-body').count(), 12)
   assert.equal(await app.evaluate(() => globalThis.translationCalls), completed)
-  await window.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await window.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await window.getByRole('button', { name: 'AI 패널 열기' }).click()
   assert.equal(await window.locator('.chat-message').count(), 0)
   assert.deepEqual(await window.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('paperglim:chat:') || key.startsWith('paperglim:draft:'))), [])
   assert.deepEqual(errors, [])

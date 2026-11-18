@@ -18,9 +18,11 @@ export type ZoteroCatalog = { papers: ZoteroPaper[]; collections: ZoteroCollecti
 export type ZoteroSyncResult = { catalog: ZoteroCatalog; available: number; unavailable: number }
 
 export type AIModel = { id: string; name: string; supportsFast?: boolean }
-export type AppCommand = 'settings' | 'guide' | 'zoomIn' | 'zoomOut' | 'resetZoom' | 'find' | 'back' | 'forward' | 'outline' | 'toggleAssistant'
+export type AppCommand = 'settings' | 'updates' | 'guide' | 'zoomIn' | 'zoomOut' | 'resetZoom' | 'find' | 'back' | 'forward' | 'outline' | 'toggleAssistant'
 export type AppInfo = { version: string; build: string; packaged: boolean }
 export type AppUpdate = { version: string; available: boolean; ahead: boolean; url: string; notes: string }
+
+export type AppUpdateState = { phase: 'idle' | 'checking' | 'available' | 'current' | 'downloading' | 'verifying' | 'ready' | 'preparing' | 'installing' | 'error'; supported: boolean; revision: number; version?: string; percent?: number; message?: string }
 
 export type ProviderStatus = {
   id: 'codex' | 'claude'
@@ -32,6 +34,9 @@ export type ProviderStatus = {
   fastModeNote?: string
 }
 
+export type UsageWindow = { remainingPercent: number; durationMins: number | null; resetsAt: number | null }
+export type ProviderUsage = { provider: 'codex' | 'claude'; status: 'ready' | 'unavailable' | 'not-installed'; windows: UsageWindow[]; checkedAt: number | null; source: 'live' | 'local'; message: string }
+
 export type DesktopBridge = {
   createBackup: (preferences: Record<string, string>, translations: boolean) => Promise<boolean>
   prepareRestore: (preferences: Record<string, string>) => Promise<RestoreSummary | null>
@@ -40,6 +45,14 @@ export type DesktopBridge = {
   restoredPreferences: () => Promise<{ revision: string; preferences: Record<string, string> } | null>
   setAppScale: (scale: number) => void
   getAppInfo: () => Promise<AppInfo>
+  getUpdateState: () => Promise<AppUpdateState>
+  checkAppUpdate: () => Promise<AppUpdateState>
+  downloadUpdate: () => Promise<AppUpdateState>
+  installUpdate: () => Promise<void>
+  cancelUpdate: () => Promise<void>
+  acknowledgeUpdateLock: (revision: number, blocked: boolean) => void
+  setUpdateBlocked: (blocked: boolean) => void
+  onAppUpdate: (callback: (state: AppUpdateState) => void) => () => void
   checkUpdate: () => Promise<AppUpdate>
   openReleases: () => Promise<void>
   onCommand: (callback: (command: AppCommand) => void) => () => void
@@ -60,9 +73,12 @@ export type DesktopBridge = {
   importZotero: (key: string) => Promise<Paper[]>
   openZoteroHelp: () => Promise<void>
   dropPdfs: (files: File[]) => Promise<Paper[]>
+  previewPdf: (id: string) => Promise<Uint8Array>
   readPdf: (id: string) => Promise<{ data: Uint8Array; fingerprint: string }>
   updatePage: (id: string, page: number) => Promise<void>
   removePaper: (id: string) => Promise<void>
+  getProviderUsage: (force?: boolean) => Promise<ProviderUsage[]>
+  onUsageChanged: (callback: () => void) => () => void
   getProviders: () => Promise<ProviderStatus[]>
   copyText: (text: string) => Promise<void>
   askAI: (provider: 'codex' | 'claude', prompt: string, model?: string, fast?: boolean, requestId?: string, image?: string) => Promise<string>

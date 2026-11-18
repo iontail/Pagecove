@@ -5,6 +5,26 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PaperLibrary } from '../src/main/library.ts'
 
+test('shelf previews leave reading recency, position and persisted metadata unchanged', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'paperglim-preview-'))
+  try {
+    const pdf = join(root, 'paper.pdf'), directory = join(root, 'profile')
+    await writeFile(pdf, '%PDF-1.7\nfixture')
+    const library = new PaperLibrary(directory)
+    await library.load()
+    await library.importZotero([{ path: pdf, paper: { key: 'PREVIEW1', title: 'Preview test', filename: 'paper.pdf', authors: '', year: '', collections: [] } }])
+    const [paper] = library.list()
+    await library.updatePage(paper.id, 5)
+    const before = await readFile(join(directory, 'library.json'), 'utf8')
+    assert.match(Buffer.from(await library.read(paper.id, false)).toString(), /^%PDF/)
+    assert.equal(await readFile(join(directory, 'library.json'), 'utf8'), before)
+    assert.equal(library.list()[0].lastOpenedAt, '')
+    assert.equal(library.list()[0].page, 5)
+    await library.read(paper.id)
+    assert.ok(library.list()[0].lastOpenedAt)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('recent PDFs retain their identity and reading position across reloads', async () => {
   const root = await mkdtemp(join(tmpdir(), 'paperglim-library-'))
   try {

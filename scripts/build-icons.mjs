@@ -1,6 +1,5 @@
 import { chromium } from 'playwright'
 import { readFile, writeFile, copyFile, mkdtemp, mkdir } from 'node:fs/promises'
-import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -10,13 +9,8 @@ const run = promisify(execFile)
 const directory = await mkdtemp(join(tmpdir(), 'paperglim-icon-'))
 const iconset = join(directory, 'icon.iconset')
 await mkdir(iconset)
-const source = await readFile('resources/icon.svg', 'utf8')
-const defs = source.match(/<defs>[\s\S]*?<\/defs>/)?.[0]
-const markGroup = source.match(/  <g id="mark"[\s\S]*<\/g>/)?.[0]
-assert.ok(defs && markGroup, 'The icon needs its definitions and mark group')
-const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="292 246 440 532" fill="none">\n${defs}\n${markGroup}\n</svg>\n`
-await writeFile('src/renderer/src/assets/paperglim.svg', mark)
-await writeFile('website/assets/mark.svg', mark)
+const sourcePath = 'resources/icon.svg'
+const source = await readFile(sourcePath, 'utf8')
 const browser = await chromium.launch({ channel: 'chrome' })
 try {
   const page = await browser.newPage({ viewport: { width: 1024, height: 1024 }, deviceScaleFactor: 1 })
@@ -29,6 +23,11 @@ for (const size of [16, 32, 128, 256, 512]) {
   }
 }
 await run('iconutil', ['-c', 'icns', iconset, '-o', resolve('resources/icon.icns')])
-await copyFile('resources/icon.svg', 'website/assets/icon.svg')
+const sidebar = source.replace('viewBox="0 0 256 256"', 'viewBox="48 39 178 178"')
+  .replace(/^  <rect [^\n]+\/>\n/m, '')
+await writeFile('src/renderer/src/assets/paperglim.svg', sidebar)
+for (const destination of ['website/assets/mark.svg', 'website/assets/icon.svg']) {
+  await copyFile(sourcePath, destination)
+}
 await copyFile('resources/icon.png', 'website/assets/icon.png')
 console.log('Created macOS icon and matching app/site marks from resources/icon.svg')

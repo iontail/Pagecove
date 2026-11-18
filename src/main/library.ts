@@ -26,14 +26,14 @@ export class PaperLibrary {
         typeof paper.id === 'string' && typeof paper.path === 'string' &&
         typeof paper.name === 'string' && typeof paper.addedAt === 'string' &&
         typeof paper.lastOpenedAt === 'string' && Number.isInteger(paper.page) && paper.page >= 1
-      )) throw new Error('논문 목록 파일을 읽을 수 없어. library.json을 확인해 줘.')
+      )) throw new Error('논문 목록을 읽지 못했어요. library.json 파일을 확인해 주세요.')
       this.papers = content
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
     try {
       const collections = JSON.parse(await readFile(join(this.directory, 'zotero-collections.json'), 'utf8'))
-      if (!Array.isArray(collections) || !collections.every((entry) => typeof entry.key === 'string' && typeof entry.name === 'string' && (entry.parentKey === null || typeof entry.parentKey === 'string'))) throw new Error('저장된 Zotero 컬렉션을 읽을 수 없어.')
+      if (!Array.isArray(collections) || !collections.every((entry) => typeof entry.key === 'string' && typeof entry.name === 'string' && (entry.parentKey === null || typeof entry.parentKey === 'string'))) throw new Error('저장한 Zotero 컬렉션을 읽지 못했어요.')
       this.collections = collections
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
   }
@@ -97,23 +97,25 @@ export class PaperLibrary {
       return publicPaper
   }
 
-  async read(id: string): Promise<Uint8Array> {
+  async read(id: string, opened = true): Promise<Uint8Array> {
     const paper = this.papers.find((entry) => entry.id === id)
-    if (!paper) throw new Error('목록에 없는 PDF야. 파일 열기로 다시 추가해 줘.')
+    if (!paper) throw new Error('목록에 없는 PDF예요. ‘PDF 열기’로 다시 추가해 주세요.')
     try {
       await validatePdf(paper.path)
       const bytes = await readFile(paper.path)
-      paper.fingerprint = createHash('sha256').update(bytes).digest('hex')
-      paper.lastOpenedAt = new Date().toISOString()
-      await this.save()
+      if (opened) {
+        paper.fingerprint = createHash('sha256').update(bytes).digest('hex')
+        paper.lastOpenedAt = new Date().toISOString()
+        await this.save()
+      }
       return new Uint8Array(bytes)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        if (this.examplePath && paper.path !== this.examplePath && paper.path.endsWith('/PaperGlim.app/Contents/Resources/app.asar/resources/ResNet.pdf')) {
+        if (this.examplePath && paper.path !== this.examplePath && /\/(?:PaperGlim|Pagecove)\.app\/Contents\/Resources\/app\.asar\/resources\/ResNet\.pdf$/.test(paper.path)) {
           await this.relink(id, this.examplePath, true)
-          return this.read(id)
+          return this.read(id, opened)
         }
-        throw new Error('원본 PDF가 이동되었거나 삭제됐어. 파일 위치를 다시 지정해 줘.')
+        throw new Error('원본 PDF를 찾지 못했어요. 파일 위치를 다시 지정해 주세요.')
       }
       throw error
     }
@@ -134,7 +136,7 @@ export class PaperLibrary {
 
   async undoRemove() {
     const paper = this.removed
-    if (!paper) throw new Error('되돌릴 목록 제거가 없어.')
+    if (!paper) throw new Error('되돌릴 작업이 없어요.')
     if (this.papers.some((entry) => entry.id === paper.id || entry.path === paper.path || (paper.zoteroKey && entry.zoteroKey === paper.zoteroKey))) throw new Error('이미 다시 등록된 논문이야.')
     this.papers.push(paper)
     await this.save()
@@ -149,8 +151,8 @@ export class PaperLibrary {
     await validatePdf(path)
     if (this.papers.some((entry) => entry.id !== id && entry.path === path)) throw new Error('이미 다른 항목에 연결된 파일이야.')
     const fingerprint = createHash('sha256').update(await readFile(path)).digest('hex')
-    if (paper.fingerprint && fingerprint !== paper.fingerprint) throw new Error('원래 PDF와 내용이 달라. 같은 파일을 선택해 줘. 다른 PDF는 새로 추가해 줘.')
-    if (!paper.fingerprint && !allowUnverified) throw Object.assign(new Error('기존 PDF의 내용 일치 여부를 확인할 수 없어.'), { code: 'UNVERIFIED_PDF' })
+    if (paper.fingerprint && fingerprint !== paper.fingerprint) throw new Error('원래 PDF와 내용이 달라요. 같은 파일을 선택하세요. 다른 PDF는 서재에 새로 추가할 수 있어요.')
+    if (!paper.fingerprint && !allowUnverified) throw Object.assign(new Error('원래 PDF와 내용이 같은지 확인할 수 없어요.'), { code: 'UNVERIFIED_PDF' })
     paper.path = path
     paper.fingerprint = fingerprint
     await this.save()
@@ -174,8 +176,8 @@ export class PaperLibrary {
 }
 
 async function validatePdf(path: string) {
-  if (extname(path).toLowerCase() !== '.pdf') throw new Error('PDF 파일을 선택해 줘.')
+  if (extname(path).toLowerCase() !== '.pdf') throw new Error('PDF 파일을 선택해 주세요.')
   const info = await stat(path)
-  if (!info.isFile()) throw new Error('PDF 파일을 선택해 줘.')
-  if (info.size > MAX_PDF_BYTES) throw new Error('첫 버전에서는 150MB 이하 PDF를 열 수 있어.')
+  if (!info.isFile()) throw new Error('PDF 파일을 선택해 주세요.')
+  if (info.size > MAX_PDF_BYTES) throw new Error('150MB 이하의 PDF를 선택해 주세요.')
 }

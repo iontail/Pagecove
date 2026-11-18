@@ -1,22 +1,19 @@
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
-import { createServer } from 'node:http'
+import { siteServer } from './site-server.mjs'
 import { readFile, mkdir } from 'node:fs/promises'
-import { resolve, extname, sep } from 'node:path'
 
-const root = resolve('website')
-const { version } = JSON.parse(await readFile('package.json', 'utf8'))
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' }
-const server = createServer(async (request, response) => {
-  const path = new URL(request.url, 'http://localhost').pathname
-  const file = resolve(root, `.${path === '/' ? '/index.html' : path}`)
-  if (!file.startsWith(root + sep)) { response.writeHead(403).end(); return }
-  try { response.setHeader('Content-Type', types[extname(file)] ?? 'text/plain'); response.end(await readFile(file)) }
-  catch { response.writeHead(404).end() }
-})
+const html = await readFile('website/index.html', 'utf8')
+const version = html.match(/name="pagecove-release" content="(\d+\.\d+\.\d+)"/)?.[1]
+assert.ok(version, 'Site declares the published release independently from the development app')
+const server = siteServer()
 await new Promise((done) => server.listen(0, '127.0.0.1', done))
 const browser = await chromium.launch({ channel: 'chrome' })
-await mkdir('artifacts', { recursive: true })
+await mkdir('artifacts/site-darkroom/screens', { recursive: true })
+const base = `http://127.0.0.1:${server.address().port}/`
+assert.equal((await fetch(base+'DESIGN.md')).status,404)
+assert.equal((await fetch(base+'package.json')).status,404)
+assert.equal((await fetch(base+'assets/../../.env')).status,404)
 try {
   const page = await browser.newPage()
   const failures = []
@@ -28,13 +25,15 @@ try {
     await page.evaluate(async () => {
       await document.fonts.ready
       document.querySelectorAll('img').forEach((image) => image.loading = 'eager')
-      await Promise.all([...document.images].map((image) => image.decode()))
+      await Promise.all([...document.images].filter(image => image.getAttribute('src')).map((image) => image.decode()))
     })
     assert.equal(await page.locator('h1').count(), 1)
+    assert.equal(await page.locator('.product-shot>.screen-open').evaluate(el => getComputedStyle(el).transform), 'none', `${name}: screen stays flat`)
+    assert.equal(await page.locator('.product-shot').evaluate(el => getComputedStyle(el).perspective), 'none', `${name}: no perspective`)
     const downloads = await page.locator('a[href$=".dmg"]').evaluateAll((links) => links.map((link) => link.href))
     assert.equal(downloads.length, 1, 'Offer one Apple Silicon download')
     assert.ok(downloads[0].endsWith('-mac-arm64.dmg'))
-    assert.ok(downloads[0].endsWith(`/v${version}/PaperGlim-${version}-mac-arm64.dmg`), 'Download must match the current app release')
+    assert.ok(downloads[0].endsWith(`/v${version}/Pagecove-${version}-mac-arm64.dmg`), 'Download must match the published site release')
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name}: horizontal overflow`)
     const anchors = await page.locator('a[href^="#"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute('href'), exists: !!document.querySelector(link.getAttribute('href')) })))
     assert.ok(anchors.every((anchor) => anchor.exists), `${name}: broken section link`)
@@ -44,12 +43,58 @@ try {
     assert.equal(await page.locator('.faq details').first().getAttribute('open'), '')
     await page.keyboard.press('Enter')
     await page.locator('.faq summary').first().blur()
-    await page.screenshot({ path: `artifacts/site-${name}.png`, fullPage: true })
+    await page.evaluate(() => scrollTo({top:0,behavior:'instant'}))
+    await page.waitForTimeout(180)
+    await page.screenshot({ path: `artifacts/site-darkroom/screens/${name}-full.png`, fullPage: true })
+    await page.screenshot({ path: `artifacts/site-darkroom/screens/${name}.png` })
+    if(name==='desktop') {
+      await page.locator('.mascot-greet').click()
+      assert.equal(await page.locator('.mascot-reply').textContent(), '반가워요!')
+      assert.ok(await page.locator('.hero-otter').evaluate(el => el.getAnimations().some(animation => animation.playState === 'running')))
+      await page.locator('.mascot-pages').evaluate(el => {
+        const animation = el.getAnimations()[0]
+        animation.pause()
+        animation.currentTime = 300
+      })
+      await page.screenshot({path:'artifacts/site-darkroom/screens/mascot-greeting.png'})
+      await page.locator('.mascot-greet').press('Enter')
+      assert.equal(await page.locator('.mascot-reply').textContent(), '같이 읽어요!')
+      const mascot = await page.locator('.mascot').boundingBox()
+      await page.mouse.move(mascot.x + mascot.width * .75, mascot.y + mascot.height * .35)
+      await page.waitForFunction(() => parseFloat(document.querySelector('.mascot-visual').style.getPropertyValue('--otter-x')) > 0)
+      await page.locator('.hero-preview-link').click()
+      await page.waitForFunction(() => location.hash === '#app-preview' && Math.abs(document.querySelector('#app-preview').getBoundingClientRect().top) < 60)
+      assert.ok((await page.locator('.product-shot img').boundingBox()).width <= 860)
+      const translation = page.locator('[data-view="translation"]')
+      await translation.click()
+      assert.equal(await translation.getAttribute('aria-pressed'), 'true')
+      assert.match(await page.locator('.product-shot img').getAttribute('src'), /translation\.png/)
+      await page.locator('.product-shot img').evaluate(async image => {
+        await image.decode()
+        await Promise.all(image.getAnimations().map(animation => animation.finished))
+      })
+      await page.screenshot({path:'artifacts/site-darkroom/screens/compact-preview.png'})
+      await page.locator('#reading').screenshot({path:'artifacts/site-darkroom/screens/reading.png'})
+      await page.locator('.learning').screenshot({path:'artifacts/site-darkroom/screens/learning.png'})
+      await page.evaluate(() => scrollTo({top:0,behavior:'instant'}))
+    }
+    await page.locator('.product-shot .image-link').click()
+    await page.locator('.image-viewer[open] img').evaluate(image => image.decode())
+    if(width<=600) assert.ok(await page.locator('.viewer-image').evaluate(el=>el.scrollWidth>el.clientWidth), 'Mobile enlarged image supports horizontal inspection')
+    await page.screenshot({ path: `artifacts/site-darkroom/screens/${name}-image-open.png` })
+    await page.keyboard.press('Escape')
+    assert.equal(await page.locator('.image-viewer').getAttribute('open'), null)
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('image-link')), true)
   }
   await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.locator('.mascot-greet').click()
+  assert.equal(await page.locator('.mascot-reply').textContent(), '반가워요!')
+  assert.equal(await page.locator('.hero-otter').evaluate(el => el.getAnimations().length), 0)
+  assert.equal(await page.locator('.mascot-visual').evaluate(el => getComputedStyle(el).transform), 'none')
+  assert.equal(await page.locator('.product-shot>.screen-open').evaluate(el => getComputedStyle(el).transform),'none')
   await page.locator('#start-guide summary').click()
   assert.equal(await page.locator('#start-guide .guide-shot').isVisible(), true)
-  await page.locator('#start-guide').screenshot({ path: 'artifacts/site-usage-open.png' })
+  await page.locator('#start-guide').screenshot({ path: 'artifacts/site-darkroom/screens/usage-open.png' })
   await page.locator('#start-guide a[href="#ai-setup"]').click()
   assert.equal(await page.locator('#ai-setup').getAttribute('open'), '')
   await page.locator('.install-note').click()
@@ -63,5 +108,5 @@ try {
   assert.equal(await page.locator('#zotero-setup').getAttribute('open'), '', 'Direct guide links survive reload')
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto')
   assert.deepEqual(failures, [])
-  console.log('Site passed: 1440/820/390/320px, current download, real app images, usage guide links, setup opening/reopening/deep links, keyboard FAQ, reduced motion and no page errors')
+  console.log('Site passed: 1440/820/390/320px; mascot hover and greeting; preview switching, enlargement and focus; download, guides, reduced motion and no overflow/errors')
 } finally { await browser.close(); await new Promise((done) => server.close(done)) }

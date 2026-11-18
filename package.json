@@ -1,19 +1,21 @@
 {
   "name": "paperglim",
-  "productName": "PaperGlim",
-  "version": "0.1.13",
+  "productName": "Pagecove",
+  "version": "0.1.24",
   "private": true,
-  "description": "A personal workspace for reading papers with your AI.",
+  "description": "Pagecove is a macOS paper reader with Korean translation, Zotero, and your own Codex or Claude Code.",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev --watch",
     "dev:renderer": "electron-vite dev --rendererOnly",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && electron-vite build",
+    "build": "npm run typecheck && node scripts/build-updater.mjs && electron-vite build",
     "start": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "test": "node --test tests/*.test.mjs",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "icons": "node scripts/build-icons.mjs"
+    "release:sign": "node scripts/sign-release.mjs",
+    "icons": "node scripts/build-icons.mjs",
+    "dev:site": "node scripts/preview-site.mjs"
   },
   "packageManager": "npm@11.19.0",
   "engines": {
@@ -51,13 +53,13 @@
     "vite": "^8.3.8"
   },
   "author": "iontail",
-  "homepage": "https://iontail.github.io/paperglim/",
+  "homepage": "https://iontail.github.io/pagecove/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/iontail/PaperGlim.git"
+    "url": "https://github.com/iontail/Pagecove.git"
   },
   "overrides": {
     "katex": "$katex"
   },
-  "buildNumber": "20261117.3"
+  "buildNumber": "20261118.4"
 }

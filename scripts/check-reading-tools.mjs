@@ -21,7 +21,7 @@ let prompt='';process.stdin.on('data',chunk=>prompt+=chunk);process.stdin.on('en
  const control=JSON.parse(fs.readFileSync(${JSON.stringify(control)},'utf8'));
  if(prompt.includes('WAIT_CHAT')||prompt.includes('WAIT_INLINE')||(translation&&control.translation)||(summary&&control.summary)){setInterval(()=>{},1000);return}
  if(translation){const blocks=JSON.parse(prompt.split('\\n').at(-1));console.log(JSON.stringify(blocks.flatMap(block=>block.sentences.map(({id,text})=>({id,text:'번역: '+text})))));return}
- if(summary){console.log(JSON.stringify({sentences:['첫 문장.','둘째 문장.','셋째 문장.'],overview:'전체 흐름 [p. 1]',sections:{question:'문제 [p. 1]',method:'방법 [p. 3]',results:'결과 [p. 5]',limitations:'한계 [p. 8]'}}));return}
+ if(summary){console.log(JSON.stringify({sentences:['첫 문장.','둘째 문장.','셋째 문장.'],overview:'전체 흐름 [p. 1]',sections:{question:'문제 [p. 1]', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]',method:'방법 [p. 3]',equations: '수식 없음', insights: '결과의 의미', results:'결과 [p. 5]',limitations:'한계 [p. 8]'}}));return}
  console.log('전체 논문의 맥락을 참고한 설명이야. [p. 3]');
 });
 `, { mode: 0o700 })
@@ -48,8 +48,10 @@ async function firstPage() {
 try {
   await launch()
   await app.evaluate(({ dialog }, paper) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [paper] }) }, paper)
-  await page.getByRole('button', { name: 'PDF 열기', exact: true }).first().click()
+  await page.getByRole('button', { name: 'PDF 선택', exact: true }).click()
   await page.locator('[data-reading-page="1"] canvas').waitFor()
+  assert.equal(await page.locator('#assistant-pane').getAttribute('hidden'), null, 'AI opens by default')
+  await page.getByRole('button', { name: 'AI 패널 접기' }).click()
   const openFile = await page.getByRole('button', { name: '다른 PDF 열기' }).boundingBox()
   const reopenAI = await page.getByRole('button', { name: 'AI 패널 열기' }).boundingBox()
   assert.ok(openFile.x + openFile.width <= reopenAI.x, 'Reader actions must leave room for reopening the AI panel')
@@ -130,7 +132,9 @@ try {
   const summaryPid = (await calls()).at(-1).pid
   await page.getByRole('button', { name: 'AI 요청 중지', exact: true }).click()
   await wait(() => !alive(summaryPid))
-  await page.getByRole('button', { name: 'AI에 보내기' }).waitFor()
+  await page.getByRole('button', { name: 'AI 요청 중지', exact: true }).waitFor({ state: 'hidden' })
+  assert.equal(await question.isVisible(), false, 'Summary keeps the reading space clear')
+  assert.equal(await page.getByRole('button', { name: 'AI 모델', exact: true }).isVisible(), true)
   await writeFile(control, '{}')
   await page.getByRole('button', { name: '논문 요약', exact: true }).click()
   await page.getByRole('heading', { name: '3문장 요약' }).waitFor()
@@ -159,6 +163,8 @@ try {
   await openAI()
   await page.getByRole('button', { name: 'AI 모델', exact: true }).click()
   await page.getByRole('menuitemradio', { name: '다른 모델', exact: true }).click()
+  await page.getByRole('button', { name: '한글번역', exact: true }).first().click()
+  await page.locator('.translation-sentence').first().waitFor()
   assert.deepEqual(await page.locator('.translation-sentence').allTextContents(), translated)
   assert.equal((await calls()).filter((call) => call.translation).length, translationsBefore)
   await page.getByRole('button', { name: '나란히 번역 닫기' }).first().click()
@@ -169,16 +175,22 @@ try {
 
   console.log('Passed translation stop and model retention')
   await page.reload()
+  await page.locator('[data-reading-page="1"] canvas').waitFor()
+  assert.equal(await page.locator('#assistant-pane').getAttribute('hidden'), null)
+  await page.getByRole('button', { name: '한글번역', exact: true }).first().click()
   await page.locator('.translation-sentence').first().waitFor()
   assert.deepEqual(await page.locator('.translation-sentence').allTextContents(), translated)
   assert.equal((await calls()).filter((call) => call.translation).length, translationsBefore)
   await app.close(); await launch()
+  await page.locator('[data-reading-page="1"] canvas').waitFor()
+  assert.equal(await page.locator('#assistant-pane').getAttribute('hidden'), null)
+  await page.getByRole('button', { name: '한글번역', exact: true }).first().click()
   await page.locator('.translation-sentence').first().waitFor()
   assert.deepEqual(await page.locator('.translation-sentence').allTextContents(), translated)
   assert.equal((await calls()).filter((call) => call.translation).length, translationsBefore)
 
   await appendFile(paper, '\n% changed content identity for cache test\n')
-  await page.getByRole('button', { name: '시작 화면으로 돌아가기' }).click()
+  await page.getByRole('button', { name: '서재로 돌아가기' }).click()
   await page.locator('.paper-select').first().click()
   await page.locator('[data-reading-page="1"] canvas').waitFor()
   await page.waitForTimeout(250)

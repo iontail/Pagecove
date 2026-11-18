@@ -51,11 +51,11 @@ test('Zotero rejects disabled access and non-local attachment URLs', async () =>
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   try {
     const client = new ZoteroClient(`http://127.0.0.1:${server.address().port}/api/`)
-    await assert.rejects(() => client.catalog(), /통신이 허용되지/)
+    await assert.rejects(() => client.catalog(), /통신할 권한/)
     blocked = false
     await client.catalog()
     await assert.rejects(() => client.resolvePdf('PDF00001'), /로컬 PDF 경로/)
     empty = true
-    await assert.rejects(() => client.resolvePdf('PDF00001'), (error) => error.code === 'ZOTERO_MISSING' && /다운로드/.test(error.message))
+    await assert.rejects(() => client.resolvePdf('PDF00001'), (error) => error.code === 'ZOTERO_MISSING' && /내려받은/.test(error.message))
   } finally { await new Promise((resolve) => server.close(resolve)) }
 })

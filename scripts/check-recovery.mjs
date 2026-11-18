@@ -21,7 +21,7 @@ let prompt='';process.stdin.on('data', chunk=>prompt+=chunk);process.stdin.on('e
  if(mode==='wait'){setInterval(()=>{},1000);return}
  if(mode==='auth'||mode==='unknown'){console.error(mode==='auth'?'invalid_api_key Bearer SECRET_CREDENTIAL':'unclassified failure SECRET_CREDENTIAL');process.exitCode=1;return}
  if(prompt.includes('JSON 배열')){const blocks=JSON.parse(prompt.split('\\n').at(-1));console.log(JSON.stringify(blocks.flatMap(block=>block.sentences.map(({id,text})=>({id,text:'번역: '+text})))));return}
- if(prompt.includes('형식: {"sentences"')){console.log(JSON.stringify({sentences:['첫 문장.','둘째 문장.','셋째 문장.'],overview:'전체 흐름 [p. 4]',sections:{question:'문제',method:'방법',results:'결과',limitations:'한계'}}));return}
+ if(prompt.includes('형식: {"sentences"')){console.log(JSON.stringify({sentences:['첫 문장.','둘째 문장.','셋째 문장.'],overview:'전체 흐름 [p. 4]',sections:{question:'문제', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]',method:'방법',equations: '수식 없음', insights: '결과의 의미', results:'결과',limitations:'한계'}}));return}
  console.log('근거를 확인하는 답변이야. $x_1$ [p. 3] [p. 999]');
 });
 `, { mode: 0o700 })
@@ -34,7 +34,7 @@ await mkdir('artifacts/recovery', { recursive: true })
 const calls = async () => (await readFile(log, 'utf8')).trim().split('\n').filter(Boolean)
 const setMode = (mode) => writeFile(control, JSON.stringify({ mode }))
 async function launch() {
-  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
   page = await app.firstWindow(); page.setDefaultTimeout(20000)
   page.on('pageerror', (error) => errors.push(error.message))
   await app.evaluate(({ dialog }, paths) => {
@@ -67,10 +67,10 @@ try {
   await page.locator('[data-reading-page="1"] canvas').waitFor()
   const [paper] = await page.evaluate(() => window.paperglim.listPapers())
   const { fingerprint } = await page.evaluate((id) => window.paperglim.readPdf(id), paper.id)
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   await page.getByRole('button', { name: '이 논문의 핵심 기여는?', exact: true }).click()
   const recovery = page.locator('.composer-area .recovery-notice')
-  await recovery.getByText(/인증을 확인/).waitFor()
+  await recovery.getByText(/AI 서비스에 다시 로그인/).waitFor()
   const question = page.getByRole('textbox', { name: '논문에 대한 질문' })
   assert.equal(await question.inputValue(), '이 논문의 핵심 기여는?')
   const failedCount = (await calls()).length
@@ -105,7 +105,7 @@ try {
   await setMode('unknown')
   await question.fill('UNKNOWN_ERROR')
   await page.getByRole('button', { name: 'AI에 보내기' }).click()
-  await recovery.getByText(/요청을 완료하지 못했어/).waitFor()
+  await recovery.getByText(/요청을 완료하지 못했어요/).waitFor()
   assert.equal((await page.locator('body').innerText()).includes('SECRET_CREDENTIAL'), false)
   await setMode('ok')
   await recovery.getByRole('button', { name: '다시 시도', exact: true }).click()
@@ -131,9 +131,9 @@ try {
   await page.getByRole('button', { name: '앱 화면 확대', exact: true }).click()
   await page.getByRole('button', { name: '앱 화면 확대', exact: true }).click()
   await page.getByRole('tab', { name: '데이터·앱 정보', exact: true }).click()
-  await page.getByRole('checkbox', { name: '저장된 번역 캐시도 백업에 포함' }).check()
+  await page.getByRole('checkbox', { name: '저장한 번역도 백업에 포함' }).check()
   await page.getByRole('button', { name: '백업 저장', exact: true }).click()
-  await page.getByText('백업 파일을 저장했어.', { exact: true }).waitFor()
+  await page.getByText('백업 파일을 저장했어요.', { exact: true }).waitFor()
   const exported = JSON.parse(await readFile(backup, 'utf8'))
   assert.equal(exported.papers[0].id, paper.id)
   assert.equal(exported.annotations[paper.id].length, 1)
@@ -145,7 +145,7 @@ try {
   await page.evaluate(({id, note}) => window.paperglim.removeAnnotation(id, note), {id: paper.id, note: notes[0].id})
   await page.getByRole('button', { name: 'ResNet 목록에서 지우기' }).click()
   await app.evaluate((_electron, path) => { globalThis.restorePath = path }, other)
-  await page.getByRole('button', { name: '다른 PDF 열기' }).click()
+  await page.getByRole('button', { name: 'PDF 선택', exact: true }).click()
   await page.locator('[data-reading-page="1"] canvas').waitFor()
   const [kept] = await page.evaluate(() => window.paperglim.listPapers())
   await page.getByRole('button', { name: '연결 설정 열기' }).click()
@@ -153,7 +153,7 @@ try {
   await page.keyboard.press('Escape')
   await app.evaluate((_electron, path) => { globalThis.restorePath = path }, backup)
   const previewForBusy = await page.evaluate(() => window.paperglim.prepareRestore(Object.fromEntries(Object.entries(localStorage))))
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   await setMode('wait')
   await page.getByRole('textbox', { name: '논문에 대한 질문' }).fill('WAIT_FOR_STOP')
   await page.getByRole('button', { name: 'AI에 보내기' }).click()
@@ -180,8 +180,8 @@ try {
   await page.getByRole('button', { name: '복원할 백업 선택', exact: true }).click()
   await page.getByRole('checkbox', { name: '백업의 화면·AI 선택 설정도 복원' }).check()
   const beforeRestoreCalls = (await calls()).length
-  await preview.getByRole('button', { name: '확인한 자료 병합 복원', exact: true }).click()
-  await page.getByText('백업 자료를 병합 복원했어. 기존 자료는 유지했어.', { exact: true }).waitFor()
+  await preview.getByRole('button', { name: '백업 자료 추가', exact: true }).click()
+  await page.getByText('기존 자료에 백업 내용을 추가했어요.', { exact: true }).waitFor()
   assert.equal(await page.evaluate(() => localStorage.getItem('paperglim:app-scale')), '1.25')
   const restored = await page.evaluate(() => window.paperglim.listPapers())
   assert.equal(restored.length, 2)
@@ -189,6 +189,7 @@ try {
   assert.ok(restored.some((entry) => entry.id === paper.id))
   assert.equal((await page.evaluate((id) => window.paperglim.getAnnotations(id), paper.id)).length, 1)
   await page.locator('.paper-select').filter({ hasText: 'ResNet' }).click()
+  await page.locator('[data-reading-page="1"]').getByRole('button', { name: '한글번역', exact: true }).click()
   await page.locator('.translation-sentence').first().waitFor()
   assert.equal((await calls()).length, beforeRestoreCalls, 'Restoring a backup must not call AI')
   await capture('restored-reading')

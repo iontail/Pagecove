@@ -1,7 +1,7 @@
 export const defaultPanels = { library: 260, assistant: 320 }
 
-export function panelLayout(preferred: typeof defaultPanels, viewport: number, assistantOpen: boolean) {
-  const libraryHidden = assistantOpen && viewport < 900
+export function panelLayout(preferred: typeof defaultPanels, viewport: number, assistantOpen: boolean, libraryCollapsed = false) {
+  const libraryHidden = libraryCollapsed || (assistantOpen && viewport < 900)
   const space = viewport - 420 - (assistantOpen && !libraryHidden ? 12 : 6)
   const assistantMax = Math.max(260, space - (libraryHidden ? 0 : 208))
   const assistant = assistantOpen ? Math.max(260, Math.min(preferred.assistant, assistantMax)) : 0

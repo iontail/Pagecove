@@ -24,7 +24,7 @@ const bundle = process.argv[2], errors = []
 let app, page, paper
 const calls = async () => (await readFile(log, 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse)
 async function launch() {
-  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
   page = await app.firstWindow(); page.setDefaultTimeout(20000); page.on('pageerror', (error) => errors.push(error.message))
   await page.locator('.brand').waitFor()
 }
@@ -111,7 +111,7 @@ try {
   await writeFile(control, 'invalid')
   await inline.getByRole('textbox', { name: '선택 영역 후속 질문' }).fill('잘린 축은?')
   await inline.getByRole('button', { name: '선택 영역 질문 보내기' }).click()
-  await inline.getByText(/학습 답변의 형식을 읽지 못했어/).waitFor()
+  await inline.getByText(/답변을 읽을 수 없어요/).waitFor()
   assert.equal((await inline.innerText()).includes('not json'), false)
   await writeFile(control, 'ok')
   await inline.getByRole('button', { name: '다시 시도', exact: true }).click()

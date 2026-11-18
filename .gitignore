@@ -7,3 +7,20 @@ release/
 !.env.example
 artifacts/
 *.tsbuildinfo
+.impeccable/
+.cache/
+*.pem
+*.key
+*update-signing-key*
+auth.json
+credentials.json
+paperglim-backup-*.json
+[Pp]agecove-backup-*.json
+
+# Local AI development notes and fixture-dependent visual checks.
+/DESIGN.md
+/PRODUCT.md
+/website/DESIGN.md
+/scripts/check-appearance.mjs
+/scripts/check-usage-themes.mjs
+/scripts/check-learning.mjs

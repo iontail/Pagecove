@@ -29,7 +29,7 @@ export default function ModelPicker({ provider, model, providers, onModel, onPro
         <DropdownMenu.RadioItem value="" className="model-option model-option-auto" disabled={!status?.installed} aria-label="자동 선택"><ProviderLogo provider={provider} /><span className="model-option-copy"><strong>자동 선택</strong><small>{automaticName}</small></span><DropdownMenu.ItemIndicator className="model-option-check"><Check size={15} /></DropdownMenu.ItemIndicator></DropdownMenu.RadioItem>
         {choices.map((entry) => <DropdownMenu.RadioItem key={entry.id} value={entry.id} className="model-option" disabled={!status?.installed} aria-label={entry.name}><ProviderLogo provider={provider} /><span className="model-option-name">{entry.name}</span>{entry.supportsFast && <Zap className="model-option-fast" size={12} aria-hidden="true" />}<DropdownMenu.ItemIndicator className="model-option-check"><Check size={15} /></DropdownMenu.ItemIndicator></DropdownMenu.RadioItem>)}
       </DropdownMenu.RadioGroup></DropdownMenu.Group>
-      {!status?.installed && <DropdownMenu.Label className="model-menu-note">{status ? `${name} CLI를 설치한 뒤 연결 설정에서 확인해 줘.` : '설치된 AI와 모델 목록을 확인하고 있어.'}</DropdownMenu.Label>}
+      {!status?.installed && <DropdownMenu.Label className="model-menu-note">{status ? `${name} CLI를 설치한 뒤 ‘AI 연결’ 설정을 확인하세요.` : 'AI 모델 확인 중…'}</DropdownMenu.Label>}
     </DropdownMenu.Content></DropdownMenu.Portal>
   </DropdownMenu.Root>
 }

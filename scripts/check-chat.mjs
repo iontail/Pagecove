@@ -70,7 +70,7 @@ $$
   const bounds = await source.boundingBox()
   await page.mouse.click(bounds.x + 10, bounds.y + 300)
   assert.equal(await page.locator('.selection-popover').count(), 0)
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   for (const [index, { id, label }] of readingQuestions.entries()) {
     if (index) await page.getByRole('button', { name: '새 대화', exact: true }).click()
     await page.getByRole('button', { name: label, exact: true }).click()

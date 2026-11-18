@@ -10,7 +10,7 @@ const bundle = process.argv[2], errors = []
 let app, page
 await mkdir('artifacts/guide', { recursive: true })
 async function launch() {
-  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
   page = await app.firstWindow(); page.setDefaultTimeout(15000); page.on('pageerror', (error) => errors.push(error.message))
   await app.evaluate(({ ipcMain }) => {
     globalThis.guideCalls = 0
@@ -19,14 +19,14 @@ async function launch() {
   })
   await page.locator('.brand').waitFor()
 }
-async function open() { await page.getByRole('button', { name: '사용 가이드 열기' }).click(); await page.getByRole('dialog', { name: 'PaperGlim 사용 가이드' }).waitFor() }
+async function open() { await page.getByRole('button', { name: '사용 가이드 열기' }).click(); await page.getByRole('dialog', { name: 'Pagecove 사용 가이드' }).waitFor() }
 async function capture(name) {
   await page.screenshot()
   const bytes = await app.evaluate(async ({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0], [width,height] = w.getContentSize(); return (await w.capturePage()).resize({ width,height }).toPNG() })
   await writeFile(`artifacts/guide/${name}.png`, Buffer.from(bytes))
 }
 async function fits() {
-  const box = await page.getByRole('dialog', { name: 'PaperGlim 사용 가이드' }).boundingBox(), viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+  const box = await page.getByRole('dialog', { name: 'Pagecove 사용 가이드' }).boundingBox(), viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }))
   assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1)
   assert.equal(await page.locator('.guide-dialog').evaluate((element) => element.scrollWidth <= element.clientWidth + 1), true)
   const footer = await page.getByRole('button', { name: '가이드 닫기' }).boundingBox()
@@ -58,14 +58,14 @@ try {
   assert.equal(await page.getByRole('dialog').count(), 0)
   const papers = await page.evaluate(() => window.paperglim.listPapers())
   assert.equal(papers.length, 1)
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   const draft = page.getByRole('textbox', { name: '논문에 대한 질문' })
   await draft.fill('가이드를 열어도 유지할 질문')
   await open(); await page.keyboard.press('Escape')
   assert.equal(await draft.inputValue(), '가이드를 열어도 유지할 질문')
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '사용 가이드 열기')
   await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((entry) => entry.label === '도움말').submenu.items.find((entry) => entry.label === '사용 가이드').click())
-  await page.getByRole('dialog', { name: 'PaperGlim 사용 가이드' }).waitFor()
+  await page.getByRole('dialog', { name: 'Pagecove 사용 가이드' }).waitFor()
   await page.keyboard.press('Meta+,')
   await page.getByRole('tab', { name: '화면·읽기', exact: true }).waitFor()
   for (let index = 0; index < 3; index++) await page.getByRole('button', { name: '앱 화면 확대', exact: true }).click()

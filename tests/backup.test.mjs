@@ -1,3 +1,4 @@
+import { backupPreferences } from '../src/shared/backup.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, readFile, writeFile, rm, access, symlink } from 'node:fs/promises'
@@ -116,4 +117,22 @@ test('startup recovers an interrupted transaction and refuses symlinked output f
     await assert.rejects(() => store.transaction(new Map([['annotations/new.json', '[]']])), /연결 경로/)
     await assert.rejects(() => access(join(root, 'outside/new.json')))
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+ test('shelf preferences survive backup filtering while invalid view modes are rejected', () => {
+  const settings = { 'paperglim:shelf-view': 'list', 'paperglim:shelf-sort': 'title', 'paperglim:library-collapsed': 'true' }
+  assert.deepEqual(backupPreferences(settings), settings)
+  assert.throws(() => backupPreferences({ 'paperglim:shelf-view': 'unknown' }))
+})
+
+
+test('appearance backup preserves valid themes and rejects unknown theme values', () => {
+  assert.deepEqual(backupPreferences({ 'paperglim:theme': 'dark' }), { 'paperglim:theme': 'dark' })
+  assert.deepEqual(backupPreferences({ 'paperglim:theme': 'light' }), { 'paperglim:theme': 'light' })
+  assert.throws(() => backupPreferences({ 'paperglim:theme': 'automatic' }), /테마/)
+})
+
+test('backup keeps palette separately from brightness and rejects unsupported palettes', () => {
+  for (const palette of ['neutral', 'cream']) assert.deepEqual(backupPreferences({ 'paperglim:palette': palette, 'paperglim:theme': 'dark' }), { 'paperglim:palette': palette, 'paperglim:theme': 'dark' })
+  assert.throws(() => backupPreferences({ 'paperglim:palette': 'unknown' }), /색상 테마/)
 })

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
-import { Slot } from "radix-ui"
+import { Slot, Tooltip } from "radix-ui"
 
 const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -50,16 +50,19 @@ function Button({
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
-  return (
+  const label = title ?? props["aria-label"]
+  const button = (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-      title={title ?? props["aria-label"]}
+      data-tooltip-label={label}
     />
   )
+  if (!label || asChild) return button
+  return <Tooltip.Root><Tooltip.Trigger asChild>{props.disabled ? <span className="disabled-tooltip-trigger" tabIndex={0} aria-label={label}>{button}</span> : button}</Tooltip.Trigger><Tooltip.Portal><Tooltip.Content className="app-tooltip" sideOffset={7} collisionPadding={12}>{label}<Tooltip.Arrow /></Tooltip.Content></Tooltip.Portal></Tooltip.Root>
 }
 
 export { Button, buttonVariants }

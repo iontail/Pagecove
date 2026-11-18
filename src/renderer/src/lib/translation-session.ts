@@ -40,7 +40,7 @@ export class TranslationSession {
       if (!cache || cache.fingerprint !== this.cache!.fingerprint) return
       for (const entry of cache.entries) if (entry.page <= this.paper.pageCount) { this.records.set(this.key(entry.page, entry.included), { ...entry, status: 'done' }); if (entry.selected) this.scopes.set(entry.page, entry.included) }
       if (!this.visibilityTouched) for (const page of cache.visible) if ([...this.records.values()].some((entry) => entry.page === page)) this.visible.add(page)
-    } catch { this.storageError = '저장된 번역을 불러오지 못했어. 다시 번역하면 새 결과를 저장할 수 있어.' }
+    } catch { this.storageError = '저장한 번역을 불러오지 못했어요. ‘다시 번역’을 눌러 새 번역을 받을 수 있어요.' }
     finally { this.loading = false; this.emit() }
   }
   async save() {
@@ -49,7 +49,7 @@ export class TranslationSession {
     try {
       await this.cache.save({ version: 1, fingerprint: this.cache.fingerprint, entries, visible: [...this.visible].filter((page) => entries.some((entry) => entry.page === page)) })
       this.storageError = ''; this.emit(); return true
-    } catch { this.storageError = '번역을 이 Mac에 저장하지 못했어. 앱을 닫기 전에 저장을 다시 시도해 줘.'; this.emit(); return false }
+    } catch { this.storageError = '번역을 저장하지 못했어요. 앱을 닫기 전에 다시 저장해 주세요.'; this.emit(); return false }
   }
   get running() { return this.jobs.size > 0 || this.all.running }
   scope(page: number) { return this.scopes.get(page) ?? [] }
@@ -60,16 +60,16 @@ export class TranslationSession {
     if (!this.jobs.size && !this.all.running) return
     this.generation++; this.stopping = true; this.all.cancelled = this.all.running; this.emit()
     try { await this.active?.cancel() }
-    catch { this.storageError = '번역 중지 요청을 보내지 못했어. 다시 눌러줘.'; this.emit() }
+    catch { this.storageError = '번역을 중지하지 못했어요. 다시 시도해 주세요.'; this.emit() }
   }
   async clearPage(page: number) {
     await this.restored
-    if (this.jobs.size) throw new Error('진행 중인 번역을 먼저 중지해 줘.')
+    if (this.jobs.size) throw new Error('진행 중인 번역을 먼저 중지해 주세요.')
     const previous = [...this.records].filter(([, record]) => record.page === page)
     const scope = this.scope(page)
     for (const [key] of previous) this.records.delete(key)
     this.scopes.delete(page)
-    if (!await this.save()) { for (const [key, record] of previous) this.records.set(key, record); this.scopes.set(page, scope); this.emit(); throw new Error('저장된 번역을 지우지 못했어. 다시 시도해 줘.') }
+    if (!await this.save()) { for (const [key, record] of previous) this.records.set(key, record); this.scopes.set(page, scope); this.emit(); throw new Error('저장한 번역을 지우지 못했어요. 다시 시도해 주세요.') }
     this.emit()
   }
   async translate(context: PageContext, included: string[] = [], force = false) {

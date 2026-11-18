@@ -86,7 +86,7 @@ export function mergeBackup(current: BackupData, incoming: BackupData) {
 }
 
 async function optionalJson(path: string, fallback: unknown) {
-  try { const info = await stat(path); if (info.size > MAX_BYTES) throw new Error('자료 파일이 너무 커. 번역 캐시를 제외하고 다시 시도해 줘.'); return JSON.parse(await readFile(path, 'utf8')) }
+  try { const info = await stat(path); if (info.size > MAX_BYTES) throw new Error('자료 파일이 너무 커요. 저장한 번역을 제외한 뒤 다시 시도해 주세요.'); return JSON.parse(await readFile(path, 'utf8')) }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return fallback; throw error }
 }
 
@@ -111,19 +111,19 @@ export class BackupStore {
         if (cache && (!paper.fingerprint || cache.fingerprint === paper.fingerprint)) translations[paper.id] = cache
         if (cache) bytes += Buffer.byteLength(JSON.stringify(cache))
       }
-      if (bytes > MAX_BYTES) throw new Error('자료가 256MB를 넘어. 번역 캐시를 제외하고 다시 시도해 줘.')
+      if (bytes > MAX_BYTES) throw new Error('자료가 256MB를 넘어요. 저장한 번역을 제외한 뒤 다시 시도해 주세요.')
     }
     return validateBackup({ format: 'PaperGlim', version: 1, appVersion: this.version, createdAt: new Date().toISOString(), papers, collections: await optionalJson(join(this.directory, 'zotero-collections.json'), []), annotations, translations, preferences: backupPreferences(preferences) })
   }
   async export(path: string, preferences: unknown, includeTranslations: boolean) {
-    if (resolve(path).startsWith(resolve(this.directory) + sep)) throw new Error('앱 자료 폴더 밖에 백업을 저장해 줘.')
+    if (resolve(path).startsWith(resolve(this.directory) + sep)) throw new Error('앱 자료 폴더 밖에 백업을 저장해 주세요.')
     const data = await this.snapshot(preferences, includeTranslations)
     const json = JSON.stringify(data)
-    if (Buffer.byteLength(json) > MAX_BYTES) throw new Error('백업이 256MB를 넘어. 번역 캐시를 제외하고 다시 시도해 줘.')
+    if (Buffer.byteLength(json) > MAX_BYTES) throw new Error('백업이 256MB를 넘어요. 저장한 번역을 제외한 뒤 다시 시도해 주세요.')
     await this.write(path, json)
   }
   async prepare(path: string, preferences: unknown) {
-    if ((await stat(path)).size > MAX_BYTES) throw new Error('256MB 이하의 백업 파일을 선택해 줘.')
+    if ((await stat(path)).size > MAX_BYTES) throw new Error('256MB 이하의 백업 파일을 선택해 주세요.')
     let parsed: unknown
     try { parsed = JSON.parse(await readFile(path, 'utf8')) } catch (error) { if (error instanceof SyntaxError) return fail(); throw error }
     const incoming = validateBackup(parsed)
@@ -133,7 +133,7 @@ export class BackupStore {
   }
   async restore(plan: Awaited<ReturnType<BackupStore['prepare']>>, preferences: unknown, restoreSettings: boolean) {
     const current = await this.snapshot(preferences, true, new Set(plan.incoming.papers.map((paper) => paper.id)))
-    if (plan.base !== digest({ ...current, createdAt: '' })) throw new Error('미리보기 이후 자료가 바뀌었어. 백업 파일을 다시 선택해 줘. 현재 자료는 변경하지 않았어.')
+    if (plan.base !== digest({ ...current, createdAt: '' })) throw new Error('미리보기를 연 뒤 앱에 저장된 자료가 바뀌었어요. 백업 파일을 다시 선택해 주세요.')
     const merged = mergeBackup(current, plan.incoming).data
     const files = new Map<string, string>([['library.json', JSON.stringify(merged.papers)], ['zotero-collections.json', JSON.stringify(merged.collections)]])
     for (const [id, notes] of Object.entries(merged.annotations)) files.set(`annotations/${encodeURIComponent(id)}.json`, JSON.stringify(notes))
@@ -153,11 +153,11 @@ export class BackupStore {
     const journal = { id, status: 'pending', files: [] as { path: string; existed: boolean }[] }
     try {
       for (const [path] of files) {
-        if (!allowedFile(path)) throw new Error('복원할 파일 경로가 올바르지 않아.')
+        if (!allowedFile(path)) throw new Error('복원할 파일 경로가 올바르지 않아요.')
         const target = join(this.directory, path)
-        if (path.includes('/')) { try { if ((await lstat(dirname(target))).isSymbolicLink()) throw new Error('자료 폴더의 연결 경로를 확인해 줘.') } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error } }
+        if (path.includes('/')) { try { if ((await lstat(dirname(target))).isSymbolicLink()) throw new Error('자료 폴더의 연결 경로를 확인해 주세요.') } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error } }
         let existed = false
-        try { const info = await lstat(target); if (!info.isFile() || info.isSymbolicLink()) throw new Error('자료 파일의 연결 경로를 확인해 줘.'); await copyFile(target, join(directory, String(journal.files.length))); existed = true }
+        try { const info = await lstat(target); if (!info.isFile() || info.isSymbolicLink()) throw new Error('자료 파일의 연결 경로를 확인해 주세요.'); await copyFile(target, join(directory, String(journal.files.length))); existed = true }
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
         journal.files.push({ path, existed })
       }
@@ -166,7 +166,7 @@ export class BackupStore {
       await this.write(join(this.directory, 'restore-journal.json'), JSON.stringify({ ...journal, status: 'committed' }))
       await this.recover()
     } catch (error) {
-      try { await this.recover() } catch { this.requiresRecovery = true; throw new Error('복원을 마무리하지 못했어. 앱을 다시 실행하면 기존 자료 복구를 다시 시도해.') }
+      try { await this.recover() } catch { this.requiresRecovery = true; throw new Error('복원을 마치지 못했어요. 앱을 다시 열면 기존 자료 복구를 다시 시도해요.') }
       throw error
     } finally {
       try { await lstat(join(this.directory, 'restore-journal.json')) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') await rm(directory, { recursive: true, force: true }) }
@@ -194,7 +194,7 @@ export class BackupStore {
   async restoredPreferences() {
     const value = await optionalJson(join(this.directory, 'restored-preferences.json'), null) as { revision: string; preferences: unknown } | null
     if (!value) return null
-    if (typeof value.revision !== 'string') throw new Error('복원된 설정 정보를 읽지 못했어.')
+    if (typeof value.revision !== 'string') throw new Error('복원한 설정을 읽지 못했어요.')
     return { revision: value.revision, preferences: backupPreferences(value.preferences) }
   }
 }

@@ -2,15 +2,15 @@ export type FailureKind = 'install' | 'auth' | 'model' | 'limit' | 'timeout' | '
 export type RequestFailure = { kind: FailureKind; message: string }
 const marker = 'PAPERGLIM_FAILURE:'
 const messages: Record<FailureKind, string> = {
-  install: 'AI CLI를 찾지 못했어. 설치한 뒤 연결 상태를 다시 확인해 줘.',
-  auth: 'AI 서비스 인증을 확인해야 해. 해당 CLI에서 다시 로그인한 뒤 요청해 줘.',
-  model: '현재 계정에서 지원하지 않는 모델이야. 연결 설정에서 다른 모델을 선택해 줘.',
-  limit: 'AI 서비스가 사용량 또는 요청 한도를 알렸어. 계정의 한도를 확인하고 잠시 후 다시 시도해 줘.',
-  timeout: 'AI 요청 시간이 초과됐어. 질문은 남아 있으니 필요할 때 다시 시도해 줘.',
-  network: 'AI 서비스에 연결하지 못했어. 인터넷 연결을 확인한 뒤 다시 시도해 줘.',
-  fast: 'Fast 요청을 사용할 수 없어. 모델과 계정의 지원 여부를 확인해 줘.',
-  zotero: 'Zotero 연결을 확인해 줘. 앱을 실행하고 고급 설정의 앱 통신 허용을 켠 뒤 다시 동기화해.',
-  unknown: 'AI 요청을 완료하지 못했어. 연결 설정을 확인하고 다시 시도해 줘.'
+  install: 'AI CLI를 찾지 못했어요. 설치한 뒤 ‘AI 연결’ 설정을 확인하세요.',
+  auth: 'AI 서비스에 다시 로그인해야 해요. 터미널에서 로그인한 뒤 다시 요청해 주세요.',
+  model: '현재 계정에서 사용할 수 없는 모델이에요. ‘AI 연결’ 설정에서 다른 모델을 고르세요.',
+  limit: 'AI 사용 한도에 도달했어요. 계정의 한도를 확인하고 잠시 후 다시 시도해 주세요.',
+  timeout: 'AI 응답 시간이 초과됐어요. 입력창에 남은 질문을 다시 보낼 수 있어요.',
+  network: 'AI 서비스에 연결하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.',
+  fast: 'Fast로 요청을 보낼 수 없어요. 모델과 계정에서 Fast를 지원하는지 확인해 주세요.',
+  zotero: 'Zotero를 실행하고 고급 설정에서 다른 앱과의 통신을 허용한 뒤 다시 동기화해 주세요.',
+  unknown: 'AI 요청을 완료하지 못했어요. ‘AI 연결’ 설정을 확인하고 다시 시도해 주세요.'
 }
 
 function kindOf(message: string): FailureKind {

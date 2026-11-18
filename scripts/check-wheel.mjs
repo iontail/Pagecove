@@ -8,7 +8,7 @@ const metadata = JSON.parse(await readFile('package.json', 'utf8'))
 const env = { ...process.env, PAPERGLIM_PROFILE_DIR: await mkdtemp(join(tmpdir(), 'paperglim-wheel-')), PAPERGLIM_BACKGROUND: '' }
 delete env.ELECTRON_RUN_AS_NODE; delete env.ELECTRON_RENDERER_URL
 const bundle = process.argv[2]
-const app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+const app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
 const errors = []
 try {
   const page = await app.firstWindow()
@@ -42,7 +42,8 @@ try {
   await page.waitForFunction((before) => document.querySelector('.reader-scroll').scrollTop > before, before)
   await zoom('100%')
   async function synthetic(options, count = 1) {
-    return area.evaluate((element, {options, count}) => {
+    const target = await area.count() ? area : page.locator('.reading-main')
+    return target.evaluate((element, {options, count}) => {
       let prevented = false
       for (let index = 0; index < count; index++) {
         const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, metaKey: true, ...options })
@@ -68,7 +69,7 @@ try {
   for (let index = 0; index < 12; index++) { await synthetic({deltaY: 100}); await page.evaluate(() => new Promise(requestAnimationFrame)) }
   await zoom('50%')
   await reset()
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   await page.locator('.assistant-body').hover()
   await page.keyboard.down('Meta'); await page.mouse.wheel(0, -100); await page.keyboard.up('Meta')
   await zoom('100%')
@@ -85,8 +86,8 @@ try {
   await page.waitForFunction(() => document.querySelector('.zoom-label').textContent !== '100%')
   assert.ok(Math.abs(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor()) - 1.25) < .001)
   await reset()
-  await page.getByRole('button', { name: '시작 화면으로 돌아가기' }).click()
-  await page.getByRole('heading', { name: '논문을 열어 읽기' }).waitFor()
+  await page.getByRole('button', { name: '서재로 돌아가기' }).click()
+  await page.getByRole('heading', { name: '내 서재', exact: true }).waitFor()
   assert.equal(await synthetic({deltaY: -100}), false)
   await page.getByRole('button', { name: 'ResNet 예제 열기' }).click()
   await page.locator('.react-pdf__Page canvas').first().waitFor()

@@ -1,10 +1,18 @@
 appId: io.github.iontail.paperglim
-productName: PaperGlim
+productName: Pagecove
 directories:
   output: release
+afterPack: scripts/configure-updater.cjs
+extraResources:
+  - from: .cache/PaperGlimUpdater.app
+    to: PaperGlimUpdater.app
 files:
   - out/**/*
-  - resources/**/*
+  - resources/ResNet.pdf
+  - resources/icon.icns
+  - resources/icon.png
+  - resources/icon.svg
+  - resources/update-public-key.txt
   - package.json
 mac:
   icon: resources/icon.icns
@@ -12,19 +20,21 @@ mac:
   minimumSystemVersion: '13.0'
   identity: '-'
   notarize: false
+  signIgnore:
+    - PaperGlimUpdater\.app
   target:
     - target: dmg
       arch: arm64
     - target: zip
       arch: arm64
-  artifactName: PaperGlim-${version}-mac-${arch}.${ext}
+  artifactName: Pagecove-${version}-mac-${arch}.${ext}
 fileAssociations:
   - ext: pdf
     name: PDF document
     mimeType: application/pdf
     role: Viewer
 dmg:
-  title: PaperGlim
+  title: Pagecove
   contents:
     - x: 145
       y: 180
@@ -35,4 +45,4 @@ dmg:
 publish:
   provider: github
   owner: iontail
-  repo: PaperGlim
+  repo: Pagecove

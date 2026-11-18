@@ -72,8 +72,8 @@ export function sentenceBlocks(blocks: TextBlock[]) {
 }
 
 export function translationPrompt(blocks: TextBlock[]) {
-  if (!blocks.length) throw new Error('선택 가능한 본문이 없어. 스캔 PDF는 아직 번역할 수 없어.')
-  if (blocks.reduce((sum, block) => sum + block.text.length, 0) > 50000) throw new Error('한 페이지의 텍스트가 너무 길어. 필요한 문장을 선택해서 AI에 번역을 요청해 줘.')
+  if (!blocks.length) throw new Error('번역할 본문이 없어요. 스캔 PDF는 아직 번역할 수 없어요.')
+  if (blocks.reduce((sum, block) => sum + block.text.length, 0) > 50000) throw new Error('한 페이지의 텍스트가 너무 길어요. 필요한 문장만 선택해 AI에 번역을 요청하세요.')
   return `역할: 학술 논문의 충실한 번역자. 이번 요청은 이전 대화와 무관한 한 페이지 번역이야.
 범위: 입력으로 제공된 본문·제목·캡션만 한국어로 번역해. 캡션은 설명문 자체만 번역하고, 그림·그래프·표를 해석하거나 추세·성능·원인·의미를 추측해서 덧붙이지 마. 잘린 문장도 제공된 범위까지만 번역해.
 보존: 숫자, 소수, 백분율, 인용 표기 [n], 수식, 변수, 약어, 고유명사를 그대로 보존해. 수치를 환산하거나 새 숫자를 추가하지 마. 이름·수식처럼 번역이 불필요한 부분은 그대로 반환해.
@@ -109,21 +109,21 @@ function citations(text: string) { return (text.match(/\[\s*\d+(?:\s*[,–-]\s*\
 export function parseTranslation(answer: string, blocks: TextBlock[], partial = false): Translation[] {
   const raw = answer.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   let parsed: unknown
-  try { parsed = JSON.parse(raw) } catch { throw new Error('AI가 번역 형식을 지키지 않았어. 다시 번역해 줘.') }
+  try { parsed = JSON.parse(raw) } catch { throw new Error('번역 결과를 읽을 수 없어요. ‘다시 번역’을 눌러 주세요.') }
   const paragraphs = sentenceBlocks(blocks)
   const count = paragraphs.reduce((sum, block) => sum + block.sentences.length, 0)
-  if (!Array.isArray(parsed)) throw new Error('AI가 번역 형식을 지키지 않았어. 다시 번역해 줘.')
-  if (!partial && (parsed.length !== count || new Set(parsed.map((entry) => entry?.id)).size !== count || !parsed.every((entry) => entry && typeof entry.id === 'string' && typeof entry.text === 'string' && entry.text.trim()))) throw new Error('번역 일부가 누락됐어. 다시 번역해 줘.')
+  if (!Array.isArray(parsed)) throw new Error('번역 결과를 읽을 수 없어요. ‘다시 번역’을 눌러 주세요.')
+  if (!partial && (parsed.length !== count || new Set(parsed.map((entry) => entry?.id)).size !== count || !parsed.every((entry) => entry && typeof entry.id === 'string' && typeof entry.text === 'string' && entry.text.trim()))) throw new Error('일부 문장의 번역이 빠졌어요. ‘다시 번역’을 눌러 주세요.')
   return paragraphs.map(({ source, sentences }) => {
     const translated = sentences.map((sentence) => {
       const matches = (parsed as { id: string; text: string }[]).filter((entry) => entry?.id === sentence.id)
       const entry = matches[0]
       try {
-        if (matches.length !== 1 || typeof entry?.text !== 'string' || !entry.text.trim()) throw new Error('번역 문장이 누락되거나 중복됐어.')
+        if (matches.length !== 1 || typeof entry?.text !== 'string' || !entry.text.trim()) throw new Error('번역 문장이 빠졌거나 중복됐어요.')
         let text = entry.text.trim()
         const protectedText = protectedSentence(sentence.text)
         for (const [index, value] of protectedText.values.entries()) text = text.replaceAll(`⟦P${index}⟧`, value)
-        if (/⟦P\d+⟧/.test(text)) throw new Error('보호 토큰이 원문과 맞지 않아.')
+        if (/⟦P\d+⟧/.test(text)) throw new Error('복원할 수치나 용어가 원문과 일치하지 않아요.')
         if (JSON.stringify(numericTokens(sentence.text)) !== JSON.stringify(numericTokens(text)) || (sentence.text.match(/%/g)?.length ?? 0) !== (text.replace(/퍼센트/g, '%').match(/%/g)?.length ?? 0)) throw new Error('수치·백분율 확인 필요')
         if (JSON.stringify(citations(sentence.text)) !== JSON.stringify(citations(text))) throw new Error('인용 표기 확인 필요')
         if (protectedTerms(sentence.text).some((term) => !text.includes(term))) throw new Error('핵심 영어 용어 확인 필요')

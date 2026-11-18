@@ -1,16 +1,20 @@
-# PaperGlim
+# Pagecove
 
-macOS에서 논문 PDF와 AI를 나란히 두고 읽는 개인용 앱.
+원문 옆에서 한글 번역을 읽고, 쓰고 있는 Codex나 Claude Code에 질문할 수 있는 Mac용 논문 리더예요.
 
-[다운로드 사이트](https://iontail.github.io/paperglim/) · [설치 파일과 릴리스](https://github.com/iontail/PaperGlim/releases/tag/v0.1.7)
+[다운로드 사이트](https://iontail.github.io/pagecove/) · [설치 파일과 릴리스](https://github.com/iontail/Pagecove/releases)
 
-현재 로컬 수정본은 **0.1.10 / 빌드 20261116.3**이야. 공개 다운로드는 아직 0.1.7이므로 구분해서 표시해. 새로운 수정본을 배포할 때 `package.json`의 버전과 빌드 번호를 함께 갱신해.
+PaperGlim의 새 이름은 Pagecove예요. 기존 설치의 논문 목록, 읽던 위치와 설정을 이어서 사용할 수 있어요.
 
-macOS 13 이상의 Apple Silicon Mac 전용이야. DMG·ZIP을 제공하며 Intel Mac은 지원하지 않아. 현재 베타는 Apple 개발자 인증서 서명·공증을 받지 않았어. 처음 실행할 때 차단되면 파일 출처를 확인한 뒤 시스템 설정의 개인정보 보호 및 보안에서 **그래도 열기**를 사용할 수 있어. [Apple 안내](https://support.apple.com/ko-kr/102445)
+현재 공개 버전은 **0.1.24**예요.
+
+macOS 13 이상의 Apple Silicon Mac에서 사용할 수 있어요. DMG를 열어 Pagecove를 ‘응용 프로그램’ 폴더로 옮기세요. 처음 실행할 때 macOS에서 차단하면 파일 출처를 확인한 뒤 시스템 설정의 ‘개인정보 보호 및 보안 → 그래도 열기’를 사용하세요. [Apple 안내](https://support.apple.com/ko-kr/102445)
 
 ## 개발 화면 확인
 
-Node.js 24 이상과 npm이 필요해.
+공개 저장소에는 소스, 테스트, 빌드·배포 도구, 공개 예제·아이콘과 라이선스를 보관해. `DESIGN.md`, `PRODUCT.md`, `website/DESIGN.md`, `.impeccable/`는 로컬 AI 개발 메모로 유지하고 Git 추적에서 제외해. 개인 프로필·로그·설치 파일·비밀키도 소스 저장소에 포함하지 않아. 배포 파일은 GitHub Releases에 별도로 올려.
+
+Node.js 24 이상과 npm, 네이티브 업데이트 도우미 빌드를 위한 Xcode Command Line Tools가 필요해.
 
 ```bash
 npm install
@@ -20,6 +24,8 @@ npm run dev
 Electron 앱 창과 내부 Vite 개발 서버가 함께 실행돼. 브라우저를 따로 열거나 서버를 별도로 실행할 필요는 없어. React/CSS 수정은 창에 자동 반영되고, main/preload 수정은 앱 재시작으로 반영돼. 터미널에서 Ctrl+C로 종료해.
 
 개발 서버는 이 Mac의 `127.0.0.1:5173`에만 열려. 배포된 앱에는 개발 서버가 필요 없어.
+
+다운로드 웹사이트는 `npm run dev:site`를 실행한 뒤 `http://127.0.0.1:4174`에서 확인해. HTML·CSS를 바꾸고 브라우저를 새로고침하면 반영돼. 로컬 디자인 메모는 이 미리보기 서버에서도 공개하지 않아.
 
 ```bash
 npm run typecheck
@@ -38,11 +44,11 @@ npx electron-builder --mac --arm64 --publish never
 
 결과는 `release/`에 생성돼. `electron-builder.yml`에 아이콘, PDF 파일 연결, 최소 macOS 버전과 배포 대상을 정의했어. 현재 서명은 로컬 무결성 검사용 ad-hoc 방식이며, Apple Developer ID 서명이나 공증은 아니야.
 
-`v*` 태그를 push하면 GitHub Actions가 Apple Silicon Mac에서 테스트·빌드한 후 arm64 설치 파일과 체크섬을 프리릴리스에 올려. `workflow_dispatch`로 실행하면 파일을 Actions artifact로만 보관해. 자동 업데이트는 아직 없어.
+GitHub Actions에 서명 secret을 별도로 설정한 경우 `v*` 태그를 push하면 테스트·빌드·업데이트 서명 검증 후 설치 파일·서명된 appcast·체크섬을 정식 최신 릴리스로 공개해. 기본 운영은 비밀키를 Mac에만 보관하고 로컬에서 서명한 뒤 릴리스에 올리는 방식이야. secret 없이 태그 자동 배포를 시도하면 서명 없는 릴리스를 공개하지 않고 중단해. 태그와 package.json 버전이 같아야 하고, 기존 릴리스 파일을 덮어쓰지 않아. `workflow_dispatch`는 파일을 Actions artifact로만 보관해. 자동 배포를 선택할 때만 아래 GitHub secret 설정이 필요해.
 
-`website/`는 빌드 과정이 필요 없는 다운로드 사이트 원본이야. `iontail.github.io` 저장소의 `paperglim/`에 HTML·CSS·assets를 복사해서 배포해. 버전을 올릴 때 `website/index.html`의 버전과 다운로드 링크를 실제 릴리스에 맞춰 갱신해야 해. 기존 개인 사이트의 Jekyll 설정이나 루트 홈페이지는 바꾸지 않아.
+`website/`는 빌드 과정이 필요 없는 다운로드 사이트 원본이야. `iontail.github.io` 저장소의 `pagecove/`에 HTML·CSS·assets를 복사해서 배포해. 버전을 올릴 때 `website/index.html`의 버전과 다운로드 링크를 실제 릴리스에 맞춰 갱신해야 해. 기존 개인 사이트의 Jekyll 설정이나 루트 홈페이지는 바꾸지 않아.
 
-아이콘 원본은 `resources/icon.svg`야. 흑연색 바탕에 두 면이 엇갈리는 틈을 둔 각진 문양을 얹었어. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 문양을 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
+아이콘 원본은 `resources/icon.svg`예요. 앱 창 왼쪽 위에는 배경을 뺀 수달을 사용해요. `npm run icons`는 설치된 Google Chrome과 macOS의 `sips`·`iconutil`로 PNG·ICNS와 앱·사이트의 문양을 함께 재생성해. 일반 개발·배포 빌드에는 Chrome이 필요 없어. 사이트의 Pretendard와 제공자 마크 라이선스는 `website/assets/`에 포함돼.
 
 `node scripts/check-package.mjs`는 실제 Apple Silicon 배포 앱의 실행·번들 PDF·아이콘·모델 메뉴를 검사해. `node scripts/check-site.mjs`는 Google Chrome으로 1440·820·390·320px 화면, 이미지·섹션 링크·키보드 FAQ·동작 줄이기를 확인하고 `artifacts/site-*.png`에 화면을 저장해.
 
@@ -56,7 +62,7 @@ npx electron-builder --mac --arm64 --publish never
 - 마우스 휠 연속 스크롤, 근처 페이지 렌더링, 텍스트 선택과 확대·축소 (⌘+/⌘− 또는 ⌘+마우스 휠, ⌘0으로 기본 배율)
 - 설정의 앱 화면 크기: 글자·아이콘·패널을 100~150%로 확대하고 다음 실행에도 유지
 - 설정 분류, ⌘, 설정 열기, 메뉴에서 PDF 확대·본문 검색·목차·이전/다음 읽기 위치 실행
-- 설정의 앱 버전·빌드 번호, 사용자가 누를 때만 공개 GitHub 릴리스와 업데이트 확인
+- 설정의 앱 버전·빌드 번호, 서명된 GitHub 업데이트 자동 확인·수동 다운로드·재시작 적용
 - 원본 PDF 이동 시 내용 해시를 확인한 재연결, 마지막 목록 제거 실행 취소로 문서 ID·읽기 위치·저장 설명 유지
 - 검색·목차·페이지 이동 전 읽기 위치로 돌아가기(⌘[)와 앞으로 가기(⌘]), PDF에 포함된 문서 목차 표시
 - 답변·요약·선택 영역 설명을 사용자가 선택한 위치에 Markdown으로 내보내기
@@ -138,7 +144,7 @@ PDF 선택문은 오른쪽 채팅에 자동으로 붙이지 않아. 오른쪽은
 1. Zotero 데스크톱 앱 실행
 2. Zotero 설정 → 고급 → “Allow other applications on this computer to communicate with Zotero” 활성화
 3. PDF가 컴퓨터에 없다면 Zotero에서 먼저 열어 다운로드
-4. PaperGlim의 Zotero 창에서 동기화
+4. Pagecove의 Zotero 창에서 동기화
 
 동기화하면 개인 라이브러리의 로컬 PDF를 한 번에 앱에 등록해. 각 파일의 가져오기를 따로 누를 필요 없이 왼쪽 목록에서 열 수 있어. 아직 Mac에 없는 PDF는 건너뛰고 개수를 알려줘. Zotero에서 다운로드한 뒤 다시 동기화하면 추가돼. 같은 파일과 첨부 항목은 중복 등록하지 않고 기존 읽던 위치와 열람 순서를 유지해. 새로 등록한 미열람 PDF는 “읽기 전”으로 표시해.
 
@@ -178,7 +184,7 @@ AI 응답 중에는 전송 버튼이 중지 버튼으로 바뀌어. 해당 요�
 
 `node scripts/check-reading-tools.mjs`는 테스트 CLI로 실제 프로세스 취소, 로컬 검색과 원문 위치, 저장된 설명 이동, 모델 변경·완전 재시작 후 번역 복원, PDF 내용 변경 감지·저장 번역 삭제와 좁은 창을 검사해. 실제 AI 계정은 사용하지 않아.
 
-`node scripts/check-core.mjs [PaperGlim.app 경로]`는 테스트 PDF·AI 응답으로 버전 정보, 업데이트/오프라인 안내, macOS 메뉴와 단축키, 목차·검색 이동 복귀, 세 가지 Markdown 내보내기, 목록 제거 취소, PDF 내용 일치 검사·재연결·재시작 후 기록 유지를 확인해. `node scripts/check-app-scale.mjs [PaperGlim.app 경로]`는 100~150% 앱 확대, 작은 창에서 PDF·채팅 배치, 설정 저장·복원을 확인해.
+`node scripts/check-core.mjs [Pagecove.app 경로]`는 테스트 PDF·AI 응답으로 버전 정보, 업데이트/오프라인 안내, macOS 메뉴와 단축키, 목차·검색 이동 복귀, 세 가지 Markdown 내보내기, 목록 제거 취소, PDF 내용 일치 검사·재연결·재시작 후 기록 유지를 확인해. `node scripts/check-app-scale.mjs [Pagecove.app 경로]`는 100~150% 앱 확대, 작은 창에서 PDF·채팅 배치, 설정 저장·복원을 확인해.
 
 재연결은 원본 PDF를 수정하지 않아. 내용이 다른 PDF는 기존 문서에 연결하지 않고 새 문서로 추가해야 해. 이전 앱에서 한 번도 내용을 읽지 않아 해시가 없는 항목은 연결 전에 사용자 확인을 받아. 목록 제거 실행 취소는 앱 실행 중 마지막 제거 한 건을 대상으로 하며 원본 파일을 복구하거나 삭제하는 기능은 아니야. 오른쪽 임시 채팅은 자동 저장하지 않고 내보내기를 명시적으로 실행했을 때만 파일로 기록해.
 
@@ -194,4 +200,35 @@ AI 응답 중에는 전송 버튼이 중지 버튼으로 바뀌어. 해당 요�
 
 복원 파일을 먼저 검증하고 원래 파일을 보관한 트랜잭션 기록을 만든 뒤 적용해. 중간 저장 실패는 되돌리고, 적용 도중 앱이 중단되면 다음 실행에서 미완료 복원을 복구한 뒤 라이브러리를 읽어. 복구 자체가 실패하면 자료 쓰기를 막고 재실행 안내를 표시해. 원본 PDF는 수정하거나 복사하지 않아.
 
-`node scripts/check-recovery.mjs [PaperGlim.app 경로]`는 테스트 CLI로 채팅·요약·선택 설명의 근거 이동, 페이지 범위 제한, 인증/알 수 없는 오류와 자격 증명 비노출, 수동 재시도, 작은 창의 오류 표시, 백업·취소·검증 거부·진행 중 작업 차단·병합·설정/번역/설명 복원·완전 재시작을 검증해. 단위 테스트는 잘못된 백업, 충돌, 미리보기 변경, 부분 쓰기 실패의 롤백과 중단 복구도 검사해.
+`node scripts/check-recovery.mjs [Pagecove.app 경로]`는 테스트 CLI로 채팅·요약·선택 설명의 근거 이동, 페이지 범위 제한, 인증/알 수 없는 오류와 자격 증명 비노출, 수동 재시도, 작은 창의 오류 표시, 백업·취소·검증 거부·진행 중 작업 차단·병합·설정/번역/설명 복원·완전 재시작을 검증해. 단위 테스트는 잘못된 백업, 충돌, 미리보기 변경, 부분 쓰기 실패의 롤백과 중단 복구도 검사해.
+
+
+## 무료 앱 내 업데이트
+
+일반 설치한 Apple Silicon 앱은 실행 30초 뒤, 이후 6시간마다 서명된 최신 릴리스 목록을 확인해. 새 버전이 있으면 상단 버튼과 macOS 알림으로 알려줘. 시스템 알림이 허용되지 않아도 앱의 버튼과 설정 → 데이터·앱 정보에서 확인할 수 있어. 앱이 완전히 종료된 동안의 푸시 알림은 제공하지 않아. GitHub에 코드만 push하는 것으로는 배포되지 않고, 버전을 올려 정식 릴리스를 만들어야 해.
+
+다운로드는 사용자가 눌렀을 때 시작하고, 준비되면 **재시작해서 업데이트**로 적용해. 논문 목록·읽던 위치·저장된 설명·번역·화면/AI 설정은 기존 사용자 데이터 폴더에 유지돼. PDF 원본은 교체하지 않아. 임시 대화는 재시작으로 종료돼. 입력 중인 초안·AI 작업·번역·저장 오류·백업/복원이 있으면 적용을 보류하고 이유를 보여줘. 적용 직전 화면 입력을 잠그고 저장 완료를 확인해.
+
+Sparkle 2.10.1을 고정 체크섬으로 가져와 별도 arm64 업데이트 도우미에 포함해. ZIP과 appcast를 Ed25519로 서명하고 검증하며, 검증 전 압축 해제를 허용하지 않아. Apple Developer ID/공증과는 별개라 추가 결제가 필요 없지만 최초 다운로드의 macOS 보안 경고를 없애지는 않아. 자동 업데이트가 없는 이전 버전은 이 기능을 포함한 앱을 **한 번 수동 설치**해야 해. 개발 실행·PAPERGLIM_PROFILE_DIR로 지정한 별도 테스트 프로필에서는 재실행 프로필 혼선을 막기 위해 업데이트를 비활성화해. [Sparkle 문서](https://sparkle-project.org/documentation/)
+
+릴리스 서명 키는 `~/.config/PaperGlim/update-signing-key`에 소유자만 읽을 수 있게 보관하고 공개 키만 `resources/update-public-key.txt`에 포함해. 이 비밀키는 저장소·릴리스·아티팩트에 넣지 말고 별도로 안전하게 백업해야 해. 잃어버리면 기존 설치와 같은 업데이트 서명 신원을 재현할 수 없어. 선택 사항인 GitHub Actions 자동 릴리스에는 동일 키를 저장소 secret `PAPERGLIM_UPDATE_PRIVATE_KEY`로 등록해야 해. 사용자 동의 전에는 외부로 보내지 않아. 임의로 새 키를 생성하거나 공개 키를 교체하면 기존 앱의 업데이트 신뢰가 끊겨.
+
+로컬 배포 준비:
+
+```bash
+npm run dist:mac
+npm run release:sign
+```
+
+서명 스크립트는 비밀키와 앱의 공개 키 일치, 앱/패키지 버전, 태그 버전을 검사해. 생성된 ZIP·DMG·appcast.xml은 같은 정식 릴리스에 함께 올려야 해. 피드는 `releases/latest/download/appcast.xml`을 사용하므로 prerelease는 자동 업데이트 대상이 아니야. 테스트: `node scripts/check-updater-native.mjs`, `node scripts/check-app-updater.mjs`, `node scripts/check-updater-electron.mjs [Pagecove.app 경로]`. 모두 임시 테스트 앱·프로필과 공개 ResNet 자료만 사용해.
+
+
+## 배포 파일과 키 구분
+
+앱에는 업데이트 **공개키**만 포함해. 다운로드한 사용자가 비밀키를 생성하거나 개발자의 비밀키를 받는 구조가 아니야. 개발자는 Mac의 비밀키로 새 ZIP과 appcast에 서명하고, 사용자 앱은 포함된 공개키로 서명을 검증해. AI는 사용자가 자신의 Mac에 설치·로그인한 Codex 또는 Claude Code를 사용하므로 개발자 계정이나 인증 정보를 배포하지 않아. Pagecove의 별도 이용료는 없고, AI 비용·구독 한도·추가 크레딧은 사용자의 CLI 계정 설정에 따라 달라져.
+
+패키징은 컴파일된 앱과 지정한 공개 예제 PDF·아이콘·공개키만 포함하고, 미승인 resources 파일이나 개인 프로필·인증 파일 경로가 앱에 포함되면 중단해. Git 무시 규칙은 일반적인 키·인증 파일과 로컬 산출물을 제외하지만 `git add -f`, 수동 압축 업로드, 개인정보가 보이는 새 스크린샷까지 막아주지는 않아. 공개 전 실제 산출물을 확인해야 해.
+
+논문을 로컬에서 열거나 Zotero와 연결하는 것과 AI 요청은 달라. 질문·번역·요약 시 논문 텍스트와 선택 이미지가 해당 AI 서비스로 전송돼. 저장된 번역·설명·백업은 별도로 암호화하지 않아. 외부 AI 전송이 허용되지 않는 기밀 자료에는 사용하지 않아야 해. Codex의 read-only 실행은 쓰기 제한이며 모든 로컬 파일 읽기나 사용자 전역 MCP·후크를 완전히 차단하는 보증은 아니야. 전역 CLI 확장까지의 완전한 격리는 별도 보안 검증 대상이야.
+
+AI 패널은 논문을 열거나 읽던 논문을 복원할 때 기본으로 열려. 서재·컬렉션에서는 닫히고 서재가 전체 공간을 사용해. 사용자가 논문에서 직접 접거나 다시 여는 동작은 유지해.

@@ -17,13 +17,13 @@ try {
     ipcMain.removeHandler('providers:list')
     ipcMain.handle('providers:list', () => [
       { id: 'codex', name: 'Codex', installed: true, version: 'fixture', fastMode: true, models: [{ id: 'standard-model', name: 'Standard model', supportsFast: false }, { id: 'fast-model', name: 'Fast capable model', supportsFast: true }] },
-      { id: 'claude', name: 'Claude Code', installed: true, version: 'fixture', fastMode: false, fastModeNote: 'Claude Fast는 구독 외 크레딧 과금이 필요해서 비활성화했어.', models: [{ id: 'opus', name: 'Opus' }, { id: 'sonnet', name: 'Sonnet' }] }
+      { id: 'claude', name: 'Claude Code', installed: true, version: 'fixture', fastMode: false, fastModeNote: 'Claude Fast는 별도 크레딧이 필요해 이 앱에서 사용할 수 없어요.', models: [{ id: 'opus', name: 'Opus' }, { id: 'sonnet', name: 'Sonnet' }] }
     ])
     globalThis.modelRequests = []
     ipcMain.removeHandler('ai:ask')
     ipcMain.handle('ai:ask', (_event, provider, prompt, model, fast) => {
       globalThis.modelRequests.push({ provider, prompt, model, fast })
-      if (prompt.includes('형식: {"sentences"')) return JSON.stringify({ sentences: ['첫 번째다.', '두 번째다.', '세 번째다.'], overview: '전체 흐름', sections: { question: '문제', method: '방법', results: '결과', limitations: '한계' } })
+      if (prompt.includes('형식: {"sentences"')) return JSON.stringify({ sentences: ['첫 번째다.', '두 번째다.', '세 번째다.'], overview: '전체 흐름', sections: { question: '문제', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]', method: '방법', equations: '수식 없음', insights: '결과의 의미', results: '결과', limitations: '한계' } })
       return `선택한 ${model} 모델의 답변이야. [p. 1]`
     })
   })
@@ -32,7 +32,7 @@ try {
   window.on('pageerror', (error) => errors.push(error.message))
   await window.getByRole('button', { name: 'ResNet 예제 열기' }).click()
   await window.locator('[data-reading-page="1"] canvas').waitFor()
-  await window.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await window.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await window.getByRole('button', { name: 'AI 패널 열기' }).click()
   const model = window.getByRole('button', { name: 'AI 모델', exact: true })
   const fast = window.getByRole('switch', { name: 'Fast 모드' })
   const menu = window.getByRole('menu', { name: 'AI 모델 선택', exact: true })
@@ -53,7 +53,7 @@ try {
   assert.equal(await fast.getAttribute('aria-checked'), 'true')
   await selectModel('fast-model')
   assert.equal(await fast.getAttribute('aria-checked'), 'true')
-  await window.getByText('Fast 사용 중 · 구독 한도를 더 소모해', { exact: true }).waitFor()
+  await window.getByText('Fast 사용 중 · 사용 한도를 더 빨리 소모해요.', { exact: true }).waitFor()
   const question = window.getByRole('textbox', { name: '논문에 대한 질문' })
   await question.fill('FIRST_MODEL_SENTINEL')
   await window.getByRole('button', { name: 'AI에 보내기' }).click()
@@ -82,7 +82,7 @@ try {
   await window.keyboard.press('Escape')
   const requestsBeforeReload = (await app.evaluate(() => globalThis.modelRequests)).length
   await window.reload()
-  await window.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await window.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await window.getByRole('button', { name: 'AI 패널 열기' }).click()
   await window.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Fast 모드"]')?.getAttribute('aria-checked') === 'true')
   assert.equal((await app.evaluate(() => globalThis.modelRequests)).length, requestsBeforeReload)
   await window.getByRole('button', { name: '연결 설정 열기' }).click()
@@ -92,14 +92,14 @@ try {
   await selectModel('sonnet')
   assert.equal(await fast.isDisabled(), true)
   assert.equal(await fast.getAttribute('aria-checked'), 'false')
-  await window.getByText('Fast는 구독 외 크레딧 과금이 필요해서 꺼뒀어.', { exact: true }).waitFor()
+  await window.getByText('Claude의 Fast는 별도 크레딧이 필요해 이 앱에서 사용할 수 없어요.', { exact: true }).waitFor()
   await window.getByRole('button', { name: '연결 설정 열기' }).click()
   await window.getByRole('tab', { name: 'AI 연결', exact: true }).click()
   await window.getByRole('button', { name: /^Codex/ }).click()
   await window.keyboard.press('Escape')
   assert.equal(await model.getAttribute('data-model'), 'fast-model')
   await window.reload()
-  await window.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await window.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await window.getByRole('button', { name: 'AI 패널 열기' }).click()
   await model.waitFor()
   assert.equal(await model.getAttribute('data-model'), 'fast-model')
   assert.equal(await fast.getAttribute('aria-checked'), 'false')
@@ -126,6 +126,11 @@ try {
   await menu.waitFor({ state: 'hidden' })
   await window.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Codex 모델')
   assert.equal(await window.getByRole('dialog').isVisible(), true)
+  if (await window.locator('.app-tooltip').count()) {
+    await window.keyboard.press('Escape')
+    await window.locator('.app-tooltip').waitFor({ state: 'hidden' })
+    assert.equal(await window.getByRole('dialog').isVisible(), true)
+  }
   await window.keyboard.press('Escape')
   await window.getByRole('dialog').waitFor({ state: 'hidden' })
   await window.screenshot({ path: 'artifacts/premium-reader.png', scale: 'css' })

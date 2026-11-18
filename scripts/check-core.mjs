@@ -35,7 +35,7 @@ const bundle = process.argv[2]
 let app, page
 const errors = []
 async function launch() {
-  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/PaperGlim') } : { args: [resolve('.')] }), env })
+  app = await _electron.launch({ ...(bundle ? { executablePath: resolve(bundle, 'Contents/MacOS/Pagecove') } : { args: [resolve('.')] }), env })
   page = await app.firstWindow()
   page.setDefaultTimeout(15000)
   page.on('pageerror', (error) => errors.push(error.message))
@@ -46,12 +46,12 @@ async function launch() {
     ipcMain.removeHandler('providers:list')
     ipcMain.handle('providers:list', () => [{ id: 'codex', name: 'Codex', installed: true, version: 'fixture', models: [{ id: 'fixture', name: 'Fixture' }] }])
     ipcMain.removeHandler('ai:ask')
-    ipcMain.handle('ai:ask', (_event, _provider, prompt) => prompt.includes('형식: {"sentences"') ? JSON.stringify({ sentences: ['첫 문장.', '둘째 문장.', '셋째 문장.'], overview: '전체 흐름 [p. 1]', sections: { question: '문제', method: '방법', results: '결과', limitations: '한계' } }) : 'Core answer with $x_1$ and a source. [p. 1]')
+    ipcMain.handle('ai:ask', (_event, _provider, prompt) => prompt.includes('형식: {"sentences"') ? JSON.stringify({ sentences: ['첫 문장.', '둘째 문장.', '셋째 문장.'], overview: '전체 흐름 [p. 1]', sections: { question: '문제', baselines: '원문에서 확인되는 비교 대상·기반 연구만 정리해. [p. 1]', method: '방법', equations: '수식 없음', insights: '결과의 의미', results: '결과', limitations: '한계' } }) : 'Core answer with $x_1$ and a source. [p. 1]')
     const fetchOriginal = globalThis.fetch
     globalThis.fetch = async (input, init) => {
-      if (String(input).startsWith('https://api.github.com/repos/iontail/PaperGlim/releases')) {
+      if (String(input).startsWith('https://api.github.com/repos/iontail/Pagecove/releases')) {
         if (globalThis.updateOffline) throw Error('offline')
-        return new Response(JSON.stringify([{ tag_name: `v${paths.futureVersion}`, body: 'Core release changes', assets: [{ name: `PaperGlim-${paths.futureVersion}-mac-arm64.dmg` }] }]))
+        return new Response(JSON.stringify([{ tag_name: `v${paths.futureVersion}`, body: 'Core release changes', assets: [{ name: `Pagecove-${paths.futureVersion}-mac-arm64.dmg` }] }]))
       }
       return fetchOriginal(input, init)
     }
@@ -84,7 +84,7 @@ try {
   await page.getByRole('button', { name: '업데이트 확인', exact: true }).click()
   await page.getByRole('alert').filter({ hasText: '업데이트 확인에 실패' }).waitFor()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'PDF 열기', exact: true }).first().click()
+  await page.getByRole('button', { name: 'PDF 선택', exact: true }).click()
   await page.locator('[data-reading-page="1"] canvas').waitFor()
   const [paper] = await page.evaluate(() => window.paperglim.listPapers())
   await menu('PDF 확대')
@@ -107,7 +107,7 @@ try {
   await page.locator('.source-search-highlight').first().waitFor(); await atPage(1)
   await page.keyboard.press('Escape')
   await page.keyboard.press('Meta+['); await atPage(2)
-  await page.getByRole('button', { name: 'AI 패널 열기' }).click()
+  if (await page.getByRole('button', { name: 'AI 패널 열기' }).isVisible()) await page.getByRole('button', { name: 'AI 패널 열기' }).click()
   await page.getByRole('button', { name: '이 논문의 핵심 기여는?', exact: true }).click()
   await page.locator('.chat-message.assistant').waitFor()
   await page.getByRole('button', { name: '답변 Markdown 내보내기' }).click()
