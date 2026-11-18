@@ -21,6 +21,7 @@ paperglim-backup-*.json
 /DESIGN.md
 /PRODUCT.md
 /website/DESIGN.md
+/DEVELOPMENT.local.md
 /scripts/check-appearance.mjs
 /scripts/check-usage-themes.mjs
 /scripts/check-learning.mjs
