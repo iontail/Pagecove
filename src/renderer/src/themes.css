@@ -71,7 +71,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 }
 .brand { border-color: var(--rail-border); }
 .brand strong, .paper-select strong, .paper-row.active strong, .library-search input { color: var(--rail-fg); }
-.brand > div > span, .library-search input::placeholder, .nav-count, .nav-trailing,
+.brand > div > span, .library-search input::placeholder, .nav-count,
 .collection-heading, .list-heading, .collection-row small, .paper-select small, .library-bottom p,
 .nav-row > svg, .collection-row svg, .paper-select > svg, .zotero-mark { color: var(--rail-muted); }
 .library-search { background: var(--rail-hover); border-color: var(--rail-border); color: var(--rail-muted); }

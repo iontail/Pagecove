@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, CircleHelp, FileText, Folder, FolderOpen, Library, Loader2, PanelLeftClose, PanelLeftOpen, PanelRightOpen, Plus, Search, Settings2, X } from 'lucide-react'
+import { ChevronRight, CircleHelp, FileText, Folder, FolderOpen, Library, Loader2, PanelLeftClose, PanelLeftOpen, PanelRightOpen, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import appMark from './assets/paperglim.svg'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,9 @@ import AssistantPanel from '@/components/AssistantPanel'
 import ConnectionSettings from '@/components/ConnectionSettings'
 import HelpGuide from '@/components/HelpGuide'
 import ZoteroLibrary from '@/components/ZoteroLibrary'
-import type { Paper, ZoteroCatalog, ZoteroCollection } from '../../shared/types'
+import type { Paper, ZoteroCollection, ZoteroSyncResult } from '../../shared/types'
 import { collectionRows, inCollection } from '../../shared/collections'
+import { requestFailure } from '../../shared/failures'
 import { ReadingActions } from '@/lib/reading-actions'
 import { appScales } from '../../shared/appearance'
 
@@ -47,6 +48,11 @@ export default function App() {
     localStorage.setItem('paperglim:app-scale', String(appScale))
   }, [appScale])
   const [zoteroOpen, setZoteroOpen] = useState(false)
+  const [zoteroResult, setZoteroResult] = useState<ZoteroSyncResult | null>(null)
+  const [zoteroSyncing, setZoteroSyncing] = useState(false)
+  const zoteroRequest = useRef<Promise<void> | null>(null)
+  const zoteroSummary = zoteroResult ? `PDF ${zoteroResult.available}개 사용 가능${zoteroResult.unavailable ? ` · ${zoteroResult.unavailable}개 확인 필요` : ''}` : ''
+  useUpdateBlocker(zoteroSyncing, 'Zotero 동기화를 마친 뒤 업데이트할 수 있어요.')
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideSeen, setGuideSeen] = useState(() => localStorage.getItem('paperglim:guide-seen:v1') === 'true')
   const openGuide = useCallback(() => {
@@ -175,12 +181,28 @@ export default function App() {
     setActiveId(items[0].id); setTranslationOpen(false); setAssistantOpen(true)
   }, [])
 
-  const acceptCatalog = useCallback(async (catalog: ZoteroCatalog) => {
-    setCollections(catalog.collections)
-    const items = await window.paperglim.listPapers()
-    setPapers(items)
-    setCollection((current) => catalog.collections.some((entry) => entry.key === current) ? current : '')
+  const syncZotero = useCallback(() => {
+    if (zoteroRequest.current) return zoteroRequest.current
+    setZoteroSyncing(true)
+    const request = window.paperglim.syncZotero().then(async (result) => {
+      const items = await window.paperglim.listPapers()
+      setPapers(items)
+      setCollections(result.catalog.collections)
+      setCollection((current) => result.catalog.collections.some((entry) => entry.key === current) ? current : '')
+      setZoteroResult(result)
+    }).finally(() => {
+      zoteroRequest.current = null
+      setZoteroSyncing(false)
+    })
+    zoteroRequest.current = request
+    return request
   }, [])
+
+  async function syncFromSidebar() {
+    setError('')
+    try { await syncZotero() }
+    catch (cause) { setError(requestFailure(cause, 'zotero').message) }
+  }
 
   function chooseCollection(key: string) { setCollection(key); localStorage.setItem('paperglim:collection', key); selectPaper(null) }
 
@@ -243,7 +265,17 @@ export default function App() {
         <div className="brand"><img className="shrink-0" src={appMark} width={34} height={34} alt="" /><div><strong>Pagecove</strong><span>내 논문 라이브러리</span></div></div>
         <div className="library-scroll">
         <div className="library-search"><Search size={14} /><Input aria-label="논문 검색" placeholder="논문 검색" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-        <div className="library-navigation"><button className={`nav-row ${!collection && !activePaper ? 'selected' : ''}`} onClick={() => chooseCollection('')}><Library size={16} /><span>내 서재</span><span className="nav-count">{papers.length}</span></button><button className="nav-row" onClick={() => setZoteroOpen(true)}><span className="zotero-mark">Z</span><span>Zotero</span><span className="nav-trailing">동기화<ChevronRight size={12} /></span></button><button className="nav-row" onClick={() => { chooseCollection(''); void window.paperglim.openExample().then(acceptPapers).catch(() => setError('예제 PDF를 열지 못했어요.')) }}><FileText size={16} /><span>ResNet 예제 열기</span></button></div>
+        <div className="library-navigation">
+          <button className={`nav-row ${!collection && !activePaper ? 'selected' : ''}`} onClick={() => chooseCollection('')}><Library size={16} /><span>내 서재</span><span className="nav-count">{papers.length}</span></button>
+          <div className="flex items-center gap-1">
+            <button className="nav-row min-w-0 flex-1" onClick={() => setZoteroOpen(true)}><span className="zotero-mark" aria-hidden="true">Z</span><span>Zotero</span></button>
+            <Button variant="outline" size="xs" aria-label="Zotero 동기화" aria-busy={zoteroSyncing} disabled={zoteroSyncing} onClick={() => void syncFromSidebar()}>
+              {zoteroSyncing ? <Loader2 className="motion-safe:animate-spin" /> : <RefreshCw />}동기화
+            </Button>
+          </div>
+          <div role="status" className="px-2 text-[11px] text-muted-foreground">{zoteroSyncing ? 'Zotero 동기화 중…' : zoteroSummary}</div>
+          <button className="nav-row" onClick={() => { chooseCollection(''); void window.paperglim.openExample().then(acceptPapers).catch(() => setError('예제 PDF를 열지 못했어요.')) }}><FileText size={16} /><span>ResNet 예제 열기</span></button>
+        </div>
         {!!collections.length && <nav className="collection-tree" aria-label="Zotero 컬렉션"><span className="collection-heading">Zotero 컬렉션</span>{collectionRows(collections).map((entry) => <button key={entry.key} title={entry.path} className={`collection-row ${entry.key === collection ? 'selected' : ''}`} style={{ paddingLeft: 8 + entry.depth * 14 }} aria-current={entry.key === collection ? 'true' : undefined} onClick={() => chooseCollection(entry.key)}><Folder size={14} /><span>{entry.name}</span><small>{papers.filter((paper) => inCollection(paper.collectionKeys ?? [], entry.key, collections)).length}</small></button>)}</nav>}
         <Separator />
         <div className="list-heading"><span title={selectedCollection?.name}>{query ? '검색 결과' : selectedCollection?.name ?? '최근 논문'}</span><Button variant="ghost" size="icon-xs" aria-label="논문 추가" disabled={opening} onClick={() => void openPdfs()}><Plus /></Button></div>
@@ -262,7 +294,7 @@ export default function App() {
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button variant="ghost" size="icon-sm" aria-label="오류 안내 닫기" onClick={() => setError('')}><X /></Button></div>}
       {restoreNotice && <div className="restore-complete" role="status"><span>기존 자료에 백업 내용을 추가했어요.</span><Button variant="ghost" size="icon-xs" aria-label="복원 안내 닫기" onClick={() => setRestoreNotice(false)}><X /></Button></div>}
       {removedPaper && <div className="library-undo" role="status"><span>‘{removedPaper.name}’ 문서를 목록에서 지웠어요.</span><Button variant="ghost" size="sm" onClick={() => void undoRemove()}>실행 취소</Button><Button variant="ghost" size="icon-xs" aria-label="제거 안내 닫기" onClick={() => setRemovedPaper(null)}><X /></Button></div>}
-      <ZoteroLibrary open={zoteroOpen} onOpenChange={setZoteroOpen} onImport={acceptPapers} initialCollection={collection} onCatalog={acceptCatalog} />
+      <ZoteroLibrary open={zoteroOpen} onOpenChange={setZoteroOpen} onImport={acceptPapers} initialCollection={collection} catalog={zoteroResult?.catalog ?? null} loading={zoteroSyncing} summary={zoteroSummary} onSync={syncZotero} />
       <HelpGuide open={guideOpen} onOpenChange={setGuideOpen} onExample={async () => acceptPapers(await window.paperglim.openExample())} onSettings={(section) => { setGuideOpen(false); setSettingsSection(section); setSettingsOpen(true) }} onZotero={() => { setGuideOpen(false); setZoteroOpen(true) }} />
       <ConnectionSettings theme={theme} onTheme={setTheme} palette={palette} onPalette={setPalette} initialSection={settingsSection} appScale={appScale} onAppScale={setAppScale} model={model} onModel={chooseModel} onZotero={() => { setSettingsOpen(false); setZoteroOpen(true) }} open={settingsOpen} onOpenChange={(open) => { setSettingsOpen(open); if (!open) window.dispatchEvent(new Event('paperglim:refresh-providers')) }} provider={provider} onProviderChange={chooseProvider} />
     </div></ReadingActions.Provider>

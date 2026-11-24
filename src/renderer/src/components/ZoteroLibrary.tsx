@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import RecoveryNotice from './RecoveryNotice'
 import { Info, Loader2, RefreshCw, FileText, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,24 +7,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { Paper, ZoteroCatalog } from '../../../shared/types'
 import { collectionRows, inCollection } from '../../../shared/collections'
 
-export default function ZoteroLibrary({ open, onOpenChange, onImport, initialCollection, onCatalog }: { open: boolean; onOpenChange: (open: boolean) => void; onImport: (papers: Paper[]) => Promise<void>; initialCollection: string; onCatalog: (catalog: ZoteroCatalog) => Promise<void> }) {
-  const [catalog, setCatalog] = useState<ZoteroCatalog | null>(null)
-  const [loading, setLoading] = useState(false)
+export default function ZoteroLibrary({ open, onOpenChange, onImport, initialCollection, catalog, loading, summary, onSync }: { open: boolean; onOpenChange: (open: boolean) => void; onImport: (papers: Paper[]) => Promise<void>; initialCollection: string; catalog: ZoteroCatalog | null; loading: boolean; summary: string; onSync: () => Promise<void> }) {
   const [importing, setImporting] = useState('')
   const [error, setError] = useState('')
   const [help, setHelp] = useState(false)
   const [query, setQuery] = useState('')
   const [collection, setCollection] = useState('')
-  const [summary, setSummary] = useState('')
-  const syncing = useRef(false)
-
   async function refresh() {
-    if (syncing.current) return
-    syncing.current = true
-    setLoading(true); setError('')
-    try { const next = await window.paperglim.syncZotero(); setCatalog(next.catalog); setSummary(`${next.available}개 PDF 사용 가능${next.unavailable ? ` · ${next.unavailable}개 로컬 파일 확인 필요` : ''}`); await onCatalog(next.catalog) }
+    setError('')
+    try { await onSync() }
     catch (cause) { setError(cleanError(cause)); setHelp(true) }
-    finally { syncing.current = false; setLoading(false) }
   }
   useEffect(() => { if (open) { setCollection(initialCollection); void refresh() } }, [open])
 

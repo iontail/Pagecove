@@ -64,7 +64,6 @@ svg { stroke-width: 1.5; }
 .nav-row:hover { background-color: #ffffff05; color: #eeeef0; }
 .nav-count { margin-left: auto; font-size: 11px; color: #a2a2aa; font-variant-numeric: tabular-nums; }
 .zotero-mark { width: 16px; font: 600 17px Georgia, serif; color: #bcbcbc; text-align: center; }
-.nav-trailing { display: flex; gap: 2px; align-items: center; margin-left: auto; color: #9999a1; font-size: 11px; }
 .collection-tree { max-height: 28vh; min-height: 64px; overflow: auto; margin: 0 0 16px; flex-shrink: 1; }
 .collection-heading { display: block; padding: 0 9px 10px; font-size: 11px; font-weight: 500; color: #9999a1; }
 .collection-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; width: 100%; text-align: left; font-size: 12px; min-height: 32px; border-radius: 6px; color: #bfbfc6; }
@@ -548,7 +547,7 @@ input::placeholder, textarea::placeholder { color: var(--muted-foreground); opac
 .nav-row.selected, .nav-row.home-selected { color: #fff1ed; background: #7f494a; border-color: transparent; box-shadow: none; }
 .nav-row.selected > svg { color: #f0d6cf; }
 .nav-row:hover:not(.selected), .collection-row:hover, .paper-row:hover { background: #ffffff0a; color: #f5f6f2; }
-.nav-count, .nav-trailing, .collection-heading, .list-heading { color: #b9c1bb; }
+.nav-count, .collection-heading, .list-heading { color: #b9c1bb; }
 .nav-row.selected .nav-count { color: #f2dcd8; }
 .collection-row { color: #d1d6d1; }
 .collection-row small { color: #b7c0b8; }

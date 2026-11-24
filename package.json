@@ -1,7 +1,7 @@
 {
   "name": "paperglim",
   "productName": "Pagecove",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "private": true,
   "description": "Pagecove is a macOS paper reader with Korean translation, Zotero, and your own Codex or Claude Code.",
   "main": "./out/main/index.js",
@@ -61,5 +61,5 @@
   "overrides": {
     "katex": "$katex"
   },
-  "buildNumber": "20261118.5"
+  "buildNumber": "20261124.1"
 }

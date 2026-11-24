@@ -48,7 +48,7 @@ export default function HelpGuide({ open, onOpenChange, onExample, onSettings, o
         <p className="guide-note">오른쪽 패널의 대화는 임시예요. 선택한 부분의 설명과 다시 보기 표시는 앱을 다시 열어도 남아요. AI 답변은 원문과 함께 확인해 주세요.</p>
       </Tabs.Content>
       <Tabs.Content value="manage" className="guide-body">
-        <Topic icon={FolderOpen} title="Zotero의 논문과 컬렉션 가져오기"><p>Zotero를 실행하고 고급 설정에서 다른 앱과의 통신을 허용하세요. Pagecove의 Zotero 창에서 ‘동기화’를 누르면 이 Mac에 내려받은 PDF가 컬렉션별로 들어와요. 자세한 연결 방법은 Zotero 창의 정보 아이콘에서 확인하세요.</p><Button variant="outline" size="sm" onClick={onZotero}>Zotero 연결 창 열기</Button></Topic>
+        <Topic icon={FolderOpen} title="Zotero의 논문과 컬렉션 가져오기"><p>Zotero를 실행하고 고급 설정에서 다른 앱과의 통신을 허용하세요. 왼쪽 사이드바의 Zotero 옆 ‘동기화’를 누르면 이 Mac에 내려받은 새 PDF가 컬렉션별로 들어와요. 자세한 연결 방법은 Zotero 창의 정보 아이콘에서 확인하세요.</p><Button variant="outline" size="sm" onClick={onZotero}>Zotero 연결 창 열기</Button></Topic>
         <Topic icon={Settings2} title="모델과 연결 상태 확인하기"><p>채팅 입력창 아래에서 Codex나 Claude Code를 고른 뒤 모델을 선택하세요. 지원되는 Codex 모델은 Fast를 켤 수 있어요. 설치, 로그인, 모델에 문제가 생기면 ‘AI 연결’ 설정을 확인하세요.</p><p>그림·표 해설에는 이미지 입력을 지원하는 CLI와 모델이 필요해요. 스캔 PDF의 문자 인식(OCR)은 아직 지원하지 않아요.</p></Topic>
         <Topic icon={Bookmark} title="저장한 자료 백업하기"><p>설정의 ‘데이터·앱 정보’에서 논문 목록, 읽던 위치, 설명과 다시 보기 표시를 백업하거나 복원하세요. 저장한 번역도 백업에 포함할 수 있어요.</p><p>백업에는 원본 PDF와 임시 대화가 들어가지 않아요. PDF는 따로 보관해 주세요.</p><Button variant="outline" size="sm" onClick={() => onSettings('about')}>백업·복원 설정 열기</Button></Topic>
       </Tabs.Content>
